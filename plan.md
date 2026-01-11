@@ -18,7 +18,7 @@ LLM (GPT-4, etc.)
 
 ## Components
 
-### 1. Main Entry Point (`cmd/agentic-postgres.go`)
+### 1. Main Entry Point (`cmd/agentic-postgres/main.go`)
 - **Very thin wrapper** - delegates all logic to internal package
 - Parse command-line flags (host, port, log level, shutdown timeout)
 - Set up context with cancellation for graceful shutdown
@@ -661,7 +661,8 @@ CREATE TABLE foo (id int);
 ```
 agentic-postgres/
 ├── cmd/
-│   └── agentic-postgres.go       # Main entry point (thin wrapper)
+│   └── agentic-postgres
+│       └── main.go                # Main entry point (thin wrapper)
 ├── internal/
 │   ├── server.go                  # Server: TCP listener, connection management, WaitGroup
 │   ├── connection.go              # Connection: per-connection logic, LLM context
