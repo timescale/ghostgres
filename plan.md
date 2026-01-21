@@ -77,20 +77,33 @@ LLM (GPT-4, etc.)
   - Creates pgproto3.Backend: `pgproto3.NewBackend(conn, conn)`
   - Stores net.Conn and backend on struct
   - Returns the Connection (caller is responsible for invoking Handle)
+- `parseOptionValue(options, key string) string` helper function:
+  - Parses space-separated key=value pairs from PostgreSQL options parameter
+  - Returns value for specified key, or empty string if not found
+  - Example: `parseOptionValue("reasoning_effort=medium other=value", "reasoning_effort")` returns "medium"
 - `Handle(ctx context.Context)` method (main connection loop):
   - Defer cleanup: close connection, log disconnection
   - Defer sending termination message if context cancelled during operation
-  - Calls authentication flow functions (passing ctx)
+  - Calls authentication flow functions (passing ctx) to get username, password, database, options
   - Uses pgproto3.Backend to receive/send messages (no manual protocol handling)
   - Validates username is "openai"
   - Extracts database name to determine LLM model (default: gpt-4o-2024-08-06 if empty)
+  - Parses options parameter to extract reasoning_effort using `parseOptionValue()` helper
+    - Options format: space-separated key=value pairs (e.g., "reasoning_effort=medium other_param=value")
+    - `parseOptionValue()` extracts specific key=value from options string
   - Adds connection-specific fields to logger:
     ```go
     logger := LoggerFromContext(ctx).With("username", username, "database", database, "model", model)
+    if reasoningEffort != "" {
+        logger = logger.With("reasoning_effort", reasoningEffort)
+    }
     ctx = ContextWithLogger(ctx, logger)
     logger.Info("connection authenticated")
     ```
-  - Creates per-connection LLM client with API key from password
+  - Creates per-connection LLM client with API key from password and reasoning effort:
+    ```go
+    c.llmClient = NewLLMClient(password, model, reasoningEffort)
+    ```
   - Enters query loop:
     - Check `ctx.Done()` before each receive - if cancelled, send ErrorResponse and exit:
       ```go
@@ -120,18 +133,18 @@ LLM (GPT-4, etc.)
 ### 4. Authentication (`internal/auth.go`)
 - **Note on Cleartext Password**: We use cleartext password authentication because we need the actual OpenAI API key to make LLM requests. Hash-based methods (SCRAM-SHA-256, MD5) cannot be used since they don't provide the plaintext password. Users should connect over localhost or use SSH tunneling for security.
 - Helper functions called by Connection.Handle()
-- `authenticate(ctx context.Context, backend *pgproto3.Backend) (username, password, database string, error)`:
+- `authenticate(ctx context.Context, backend *pgproto3.Backend) (username, password, database, options string, error)`:
   - Extract logger from ctx for logging
   - `msg, err := backend.ReceiveStartupMessage()` - Get StartupMessage
   - Type assert to `*pgproto3.StartupMessage`
-  - Extract username and database from `msg.Parameters` map
+  - Extract username, database, and options from `msg.Parameters` map
   - Send auth request: `backend.Send(&pgproto3.AuthenticationCleartextPassword{})`
   - `backend.Flush()`
   - `msg, err = backend.Receive()` - Get password
   - Type assert to `*pgproto3.PasswordMessage`
   - Validate username == "openai" (return error if not)
   - Log authentication attempt
-  - Return username, password, database
+  - Return username, password, database, options
 - `sendStartupMessages(ctx context.Context, backend *pgproto3.Backend) error`:
   - Extract logger from ctx for logging
   - Send multiple messages using pgproto3 types:
@@ -193,20 +206,22 @@ LLM (GPT-4, etc.)
   - LLMClient automatically maintains chat history internally
 
 ### 6. LLM Integration (`internal/llm.go`)
-- `LLMClient` struct holds: OpenAI client, model name, chat history slice
-- `NewLLMClient(apiKey string, model string) *LLMClient`:
+- `LLMClient` struct holds: OpenAI client, model name, reasoning effort, chat history slice
+- `NewLLMClient(apiKey string, model string, reasoningEffort string) *LLMClient`:
   - Creates OpenAI client with API key
   - Initializes chat history with system prompt as first message
-  - Stores model name
+  - Stores model name and reasoning effort (empty string means use model default)
 - `Query(ctx context.Context, queryString string) (*LLMResponse, error)`:
   - Extract logger from ctx for logging
   - Appends user query to chat history
   - Log LLM API call start
-  - Calls OpenAI Chat Completions API with:
+  - Builds API request parameters:
     - Context for cancellation/timeout
     - Messages: full chat history
     - Model: stored model name
     - ResponseFormat with structured output JSON schema (see Schema Generation below)
+    - ReasoningEffort: only set if explicitly provided (not empty string)
+  - Calls OpenAI Chat Completions API with parameters
   - Log LLM API call completion (with duration, token count if available)
   - Parses response into LLMResponse struct
   - Appends assistant response to chat history
@@ -561,6 +576,16 @@ Model selection:
   - `psql -h localhost -U openai -d gpt-4o-mini` → uses gpt-4o-mini model
   - `psql -h localhost -U openai` → uses default gpt-4o-2024-08-06
 
+Reasoning effort configuration:
+- Specified via the PostgreSQL `options` parameter in the connection string
+- Format: `reasoning_effort=<level>` where level is `low`, `medium`, `high`, etc.
+- If not provided, uses the model's default reasoning effort
+- Can be set via PGOPTIONS environment variable or connection string
+- Example connections:
+  - `PGOPTIONS="reasoning_effort=medium" psql -h localhost -U openai -d gpt-4o`
+  - `psql "host=localhost user=openai dbname=gpt-4o options=reasoning_effort=medium"`
+  - `psql "postgresql://openai@localhost/gpt-4o?options=reasoning_effort%3Dmedium"` (URL-encoded)
+
 ## Testing Strategy
 
 ### Manual Testing
@@ -571,6 +596,12 @@ PGPASSWORD="sk-..." psql -h localhost -p 5432 -U openai -d gpt-4o
 
 # Or use a different model
 PGPASSWORD="sk-..." psql -h localhost -p 5432 -U openai -d gpt-4o-mini
+
+# With reasoning effort specified
+PGOPTIONS="reasoning_effort=medium" PGPASSWORD="sk-..." psql -h localhost -U openai -d gpt-4o
+
+# Or using connection string with options
+PGPASSWORD="sk-..." psql "host=localhost user=openai dbname=gpt-4o options=reasoning_effort=high"
 ```
 
 Test queries:

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 )
@@ -49,7 +50,7 @@ func (c *Connection) Handle(ctx context.Context) error {
 	}()
 
 	// Perform authentication
-	username, password, database, err := authenticate(ctx, c.backend)
+	username, password, database, options, err := authenticate(ctx, c.backend)
 	if err != nil {
 		return fmt.Errorf("authentication failed: %w", err)
 	}
@@ -71,8 +72,15 @@ func (c *Connection) Handle(ctx context.Context) error {
 		model = "gpt-4o-2024-08-06" // default model
 	}
 
+	// Parse options for reasoning_effort
+	// Format: "reasoning_effort=medium" or "param1=value1 reasoning_effort=medium"
+	reasoningEffort := parseOptionValue(options, "reasoning_effort")
+
 	// Add connection-specific fields to logger
 	logger = LoggerFromContext(ctx).With("username", username, "database", database, "model", model)
+	if reasoningEffort != "" {
+		logger = logger.With("reasoning_effort", reasoningEffort)
+	}
 	ctx = ContextWithLogger(ctx, logger)
 	logger.Info("connection authenticated")
 
@@ -82,7 +90,7 @@ func (c *Connection) Handle(ctx context.Context) error {
 	}
 
 	// Create per-connection LLM client with API key from password
-	c.llmClient = NewLLMClient(password, model)
+	c.llmClient = NewLLMClient(password, model, reasoningEffort)
 
 	// Enter query loop
 	for {
@@ -122,4 +130,24 @@ func (c *Connection) Handle(ctx context.Context) error {
 			logger.Warn("unsupported message type", "type", fmt.Sprintf("%T", msg))
 		}
 	}
+}
+
+// parseOptionValue extracts a key=value pair from a space-separated options string
+// For example: "reasoning_effort=medium other_param=value" -> parseOptionValue(..., "reasoning_effort") returns "medium"
+func parseOptionValue(options, key string) string {
+	if options == "" {
+		return ""
+	}
+
+	// Split by spaces to get individual key=value pairs
+	parts := strings.Fields(options)
+	prefix := key + "="
+
+	for _, part := range parts {
+		if value, found := strings.CutPrefix(part, prefix); found {
+			return value
+		}
+	}
+
+	return ""
 }

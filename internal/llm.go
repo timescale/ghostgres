@@ -20,7 +20,7 @@ Remember what data you've returned before and maintain consistency.
 CRITICAL RULES:
 1. ALWAYS return results for every query, even if the query seems invalid or malformed
 2. NEVER return errors - be creative and interpret the user's intent
-3. Return COMPLETE data sets
+3. Return COMPLETE data sets (for example, if the user runs 'SELECT * FROM presidents;', return ALL of the U.S. presidents in order)
 4. Only limit results if the query explicitly includes WHERE, LIMIT, or similar filtering clauses
 5. The command_tag field must ONLY contain valid success tags like "SELECT 10", "INSERT 0 1", etc. - NEVER error messages
 
@@ -57,13 +57,14 @@ Example for "SELECT 1; INSERT INTO foo VALUES (1); SELECT 2;":
 
 // LLMClient handles communication with the OpenAI API
 type LLMClient struct {
-	client  openai.Client
-	model   string
-	history []openai.ChatCompletionMessageParamUnion
+	client          openai.Client
+	model           string
+	reasoningEffort string // empty string means use model default
+	history         []openai.ChatCompletionMessageParamUnion
 }
 
-// NewLLMClient creates a new LLM client with the specified API key and model
-func NewLLMClient(apiKey string, model string) *LLMClient {
+// NewLLMClient creates a new LLM client with the specified API key, model, and optional reasoning effort
+func NewLLMClient(apiKey string, model string, reasoningEffort string) *LLMClient {
 	client := openai.NewClient(option.WithAPIKey(apiKey))
 
 	// Initialize chat history with system prompt
@@ -72,9 +73,10 @@ func NewLLMClient(apiKey string, model string) *LLMClient {
 	}
 
 	return &LLMClient{
-		client:  client,
-		model:   model,
-		history: history,
+		client:          client,
+		model:           model,
+		reasoningEffort: reasoningEffort,
+		history:         history,
 	}
 }
 
@@ -94,30 +96,27 @@ func (c *LLMClient) Query(ctx context.Context, queryString string) (*LLMResponse
 		return nil, fmt.Errorf("failed to generate schema: %w", err)
 	}
 
-	// Marshal schema to JSON for the API
-	schemaBytes, err := json.Marshal(schema)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal schema: %w", err)
-	}
-
-	var schemaJSON map[string]interface{}
-	if err := json.Unmarshal(schemaBytes, &schemaJSON); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal schema: %w", err)
-	}
-
-	// Call OpenAI Chat Completions API with structured outputs
-	completion, err := c.client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
+	// Build API request parameters
+	params := openai.ChatCompletionNewParams{
 		Messages: c.history,
 		Model:    shared.ChatModel(c.model),
 		ResponseFormat: openai.ChatCompletionNewParamsResponseFormatUnion{
 			OfJSONSchema: &shared.ResponseFormatJSONSchemaParam{
 				JSONSchema: shared.ResponseFormatJSONSchemaJSONSchemaParam{
 					Name:   "postgres_response",
-					Schema: schemaJSON,
+					Schema: schema,
 				},
 			},
 		},
-	})
+	}
+
+	// Only set ReasoningEffort if explicitly provided
+	if c.reasoningEffort != "" {
+		params.ReasoningEffort = shared.ReasoningEffort(c.reasoningEffort)
+	}
+
+	// Call OpenAI Chat Completions API with structured outputs
+	completion, err := c.client.Chat.Completions.New(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("LLM API call failed: %w", err)
 	}

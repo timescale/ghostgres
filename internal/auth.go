@@ -8,49 +8,50 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 )
 
-// authenticate performs the authentication flow and returns username, password, and database
-func authenticate(ctx context.Context, backend *pgproto3.Backend) (username, password, database string, err error) {
+// authenticate performs the authentication flow and returns username, password, database, and options
+func authenticate(ctx context.Context, backend *pgproto3.Backend) (username, password, database, options string, err error) {
 	logger := LoggerFromContext(ctx)
 
 	// Receive startup message
 	msg, err := backend.ReceiveStartupMessage()
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to receive startup message: %w", err)
+		return "", "", "", "", fmt.Errorf("failed to receive startup message: %w", err)
 	}
 
 	// Type assert to StartupMessage
 	startupMsg, ok := msg.(*pgproto3.StartupMessage)
 	if !ok {
-		return "", "", "", fmt.Errorf("expected StartupMessage, got %T", msg)
+		return "", "", "", "", fmt.Errorf("expected StartupMessage, got %T", msg)
 	}
 
-	// Extract username and database from parameters
+	// Extract username, database, and options from parameters
 	username = startupMsg.Parameters["user"]
 	database = startupMsg.Parameters["database"]
+	options = startupMsg.Parameters["options"]
 
-	logger.Info("authentication attempt", "username", username, "database", database)
+	logger.Info("authentication attempt", "username", username, "database", database, "options", options)
 
 	// Send cleartext password request
 	backend.Send(&pgproto3.AuthenticationCleartextPassword{})
 	if err := backend.Flush(); err != nil {
-		return "", "", "", fmt.Errorf("failed to send auth request: %w", err)
+		return "", "", "", "", fmt.Errorf("failed to send auth request: %w", err)
 	}
 
 	// Receive password message
 	msg, err = backend.Receive()
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to receive password: %w", err)
+		return "", "", "", "", fmt.Errorf("failed to receive password: %w", err)
 	}
 
 	// Type assert to PasswordMessage
 	passwordMsg, ok := msg.(*pgproto3.PasswordMessage)
 	if !ok {
-		return "", "", "", fmt.Errorf("expected PasswordMessage, got %T", msg)
+		return "", "", "", "", fmt.Errorf("expected PasswordMessage, got %T", msg)
 	}
 
 	password = passwordMsg.Password
 
-	return username, password, database, nil
+	return username, password, database, options, nil
 }
 
 // sendStartupMessages sends the startup sequence to the client
