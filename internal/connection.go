@@ -11,17 +11,19 @@ import (
 
 // Connection represents a single client connection
 type Connection struct {
-	conn      net.Conn
-	backend   *pgproto3.Backend
-	llmClient LLMClient
+	conn         net.Conn
+	backend      *pgproto3.Backend
+	llmClient    LLMClient
+	systemPrompt string // custom system prompt; empty means use default
 }
 
 // NewConnection creates a new Connection instance
-func NewConnection(conn net.Conn) *Connection {
+func NewConnection(conn net.Conn, systemPrompt string) *Connection {
 	backend := pgproto3.NewBackend(conn, conn)
 	return &Connection{
-		conn:    conn,
-		backend: backend,
+		conn:         conn,
+		backend:      backend,
+		systemPrompt: systemPrompt,
 	}
 }
 
@@ -99,9 +101,9 @@ func (c *Connection) Handle(ctx context.Context) error {
 	var llmClient LLMClient
 	switch provider {
 	case "openai":
-		llmClient = NewOpenAILLMClient(password, model, opts)
+		llmClient = NewOpenAILLMClient(password, model, opts, c.systemPrompt)
 	case "anthropic":
-		llmClient = NewAnthropicLLMClient(password, model, opts)
+		llmClient = NewAnthropicLLMClient(password, model, opts, c.systemPrompt)
 	}
 	c.llmClient = llmClient
 

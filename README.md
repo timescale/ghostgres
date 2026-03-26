@@ -34,6 +34,7 @@ Flags:
 | `-host` | `""` (all interfaces) | Hostname/interface to bind to |
 | `-port` | `5432` | Port to listen on |
 | `-log-level` | `info` | Log level (`debug`, `info`, `warn`, `error`) |
+| `-prompt` | Built-in prompt | Path to a file containing a custom system prompt |
 
 ## Connecting
 

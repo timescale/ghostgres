@@ -26,8 +26,8 @@ type Column struct {
 	Length int16  `json:"length"`
 }
 
-// System prompt shared by all providers
-const systemPrompt = `You are a PostgreSQL database that responds to SQL queries. For each query,
+// DefaultSystemPrompt is used when no custom --prompt file is provided.
+const DefaultSystemPrompt = `You are a PostgreSQL database that responds to SQL queries. For each query,
 return results that are consistent with your previous responses in this session.
 Remember what data you've returned before and maintain consistency.
 

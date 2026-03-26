@@ -14,18 +14,19 @@ import (
 
 // AnthropicLLMClient handles communication with the Anthropic API
 type AnthropicLLMClient struct {
-	client   anthropic.Client
-	model    string
-	effort   anthropic.OutputConfigEffort // empty means don't set
-	thinking anthropic.ThinkingConfigParamUnion
-	history  []anthropic.MessageParam
+	client       anthropic.Client
+	model        string
+	effort       anthropic.OutputConfigEffort // empty means don't set
+	thinking     anthropic.ThinkingConfigParamUnion
+	history      []anthropic.MessageParam
+	systemPrompt string
 }
 
 // NewAnthropicLLMClient creates a new Anthropic LLM client.
 // Supported options:
 //   - "effort": output effort level (low, medium, high, max). Defaults to "low".
 //   - "thinking": extended thinking budget in tokens (e.g. "10000"). Minimum 1024.
-func NewAnthropicLLMClient(apiKey string, model string, opts map[string]string) *AnthropicLLMClient {
+func NewAnthropicLLMClient(apiKey string, model string, opts map[string]string, systemPrompt string) *AnthropicLLMClient {
 	client := anthropic.NewClient(option.WithAPIKey(apiKey))
 
 	effort := anthropic.OutputConfigEffort(opts["effort"])
@@ -42,10 +43,11 @@ func NewAnthropicLLMClient(apiKey string, model string, opts map[string]string) 
 	}
 
 	return &AnthropicLLMClient{
-		client:   client,
-		model:    model,
-		effort:   effort,
-		thinking: thinking,
+		client:       client,
+		model:        model,
+		effort:       effort,
+		thinking:     thinking,
+		systemPrompt: systemPrompt,
 	}
 }
 
@@ -78,7 +80,7 @@ func (c *AnthropicLLMClient) Query(ctx context.Context, queryString string) (*LL
 		Model:     anthropic.Model(c.model),
 		MaxTokens: 16384,
 		System: []anthropic.TextBlockParam{
-			{Text: systemPrompt},
+			{Text: c.systemPrompt},
 		},
 		OutputConfig: anthropic.OutputConfigParam{
 			Effort: c.effort,

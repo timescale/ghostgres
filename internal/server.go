@@ -9,18 +9,20 @@ import (
 
 // Server handles incoming TCP connections and manages connection lifecycle
 type Server struct {
-	host       string
-	port       int
-	wg         sync.WaitGroup
-	connCtx    context.Context
-	connCancel context.CancelFunc
+	host         string
+	port         int
+	systemPrompt string // custom system prompt; empty means use default
+	wg           sync.WaitGroup
+	connCtx      context.Context
+	connCancel   context.CancelFunc
 }
 
 // NewServer creates a new Server instance
-func NewServer(host string, port int) *Server {
+func NewServer(host string, port int, systemPrompt string) *Server {
 	return &Server{
-		host: host,
-		port: port,
+		host:         host,
+		port:         port,
+		systemPrompt: systemPrompt,
 	}
 }
 
@@ -72,7 +74,7 @@ func (s *Server) Start(ctx context.Context) error {
 		s.wg.Add(1)
 		go func() {
 			defer s.wg.Done()
-			connection := NewConnection(conn)
+			connection := NewConnection(conn, s.systemPrompt)
 			if err := connection.Handle(connCtx); err != nil {
 				LoggerFromContext(connCtx).Error("connection error", "error", err)
 			}

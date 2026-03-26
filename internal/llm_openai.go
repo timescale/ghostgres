@@ -67,7 +67,7 @@ type OpenAILLMClient struct {
 // NewOpenAILLMClient creates a new OpenAI LLM client.
 // It reads the "reasoning_effort" option from opts; if absent, defaults to the
 // lowest supported effort for the model.
-func NewOpenAILLMClient(apiKey string, model string, opts map[string]string) *OpenAILLMClient {
+func NewOpenAILLMClient(apiKey string, model string, opts map[string]string, systemPrompt string) *OpenAILLMClient {
 	client := openai.NewClient(option.WithAPIKey(apiKey))
 
 	reasoningEffort := opts["reasoning_effort"]
