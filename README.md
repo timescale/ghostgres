@@ -1,5 +1,15 @@
 # agentic-postgres
 
+Are you tired of maintaining your SQL database? Tired of having to write "syntactically correct" SQL queries? Tired of having to query tables that "actually exist"?
+
+Well look no further. We built agentic-postgres to be the database of the future. There's nothing to maintain. No special query language to learn. It never returns errors. And the only limits on what you can query are the limits of your own imagination.
+
+And the best part? It's Postgres wire-compatible, so you can plug it in wherever you currently use Postgres.
+
+Just grab an API key for your favorite AI model provider, connect, and start querying. It's really that simple.
+
+## What is it?
+
 A wire-compatible PostgreSQL server that routes all queries to an LLM instead of executing them against a real database. Each connection maintains its own LLM context for consistency across queries.
 
 
