@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/jsonschema-go/jsonschema"
@@ -55,17 +56,66 @@ Example for "SELECT 1; INSERT INTO foo VALUES (1); SELECT 2;":
   ]
 }`
 
+// modelReasoningEffortPrefixes maps model name prefixes to the lowest supported
+// reasoning effort level. Entries are checked longest-prefix-first so that e.g.
+// "gpt-5.4" matches before "gpt-5". Models not matching any prefix (like gpt-4o
+// or gpt-4.1, which are non-reasoning models) will not have reasoning_effort set.
+var modelReasoningEffortPrefixes = []struct {
+	prefix string
+	effort string
+}{
+	// GPT-5.4 family — supports none, low, medium, high (default: none)
+	{"gpt-5.4-nano", "none"},
+	{"gpt-5.4-mini", "none"},
+	{"gpt-5.4", "none"},
+	// GPT-5.3 family
+	{"gpt-5.3", "none"},
+	// GPT-5.2 family — supports none, low, medium, high, xhigh (default: none)
+	{"gpt-5.2", "none"},
+	// GPT-5.1 family — supports none, low, medium, high (default: none)
+	{"gpt-5.1-mini", "none"},
+	{"gpt-5.1", "none"},
+	// GPT-5 family — supports minimal, low, medium, high (default: medium)
+	{"gpt-5-nano", "minimal"},
+	{"gpt-5-mini", "minimal"},
+	{"gpt-5", "minimal"},
+	// o-series — supports low, medium, high (default: medium)
+	{"o4-mini", "low"},
+	{"o3-pro", "low"},
+	{"o3-mini", "low"},
+	{"o3", "low"},
+	{"o1-pro", "low"},
+	{"o1", "low"},
+}
+
+// defaultReasoningEffort returns the lowest reasoning effort for the given model,
+// or an empty string if the model doesn't support reasoning effort.
+func defaultReasoningEffort(model string) string {
+	for _, entry := range modelReasoningEffortPrefixes {
+		if strings.HasPrefix(model, entry.prefix) {
+			return entry.effort
+		}
+	}
+	return ""
+}
+
 // LLMClient handles communication with the OpenAI API
 type LLMClient struct {
 	client          openai.Client
 	model           string
-	reasoningEffort string // empty string means use model default
+	reasoningEffort string // empty string means don't set reasoning effort
 	history         []openai.ChatCompletionMessageParamUnion
 }
 
-// NewLLMClient creates a new LLM client with the specified API key, model, and optional reasoning effort
+// NewLLMClient creates a new LLM client with the specified API key, model, and optional reasoning effort.
+// If reasoningEffort is empty, the lowest supported effort for the model is used automatically.
 func NewLLMClient(apiKey string, model string, reasoningEffort string) *LLMClient {
 	client := openai.NewClient(option.WithAPIKey(apiKey))
+
+	// If no explicit reasoning effort provided, use the lowest for this model
+	if reasoningEffort == "" {
+		reasoningEffort = defaultReasoningEffort(model)
+	}
 
 	// Initialize chat history with system prompt
 	history := []openai.ChatCompletionMessageParamUnion{

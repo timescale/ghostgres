@@ -67,7 +67,7 @@ psql "host=localhost user=openai password=sk-... dbname=gpt-5.4"
 
 ### Reasoning effort
 
-You can optionally control the model's reasoning effort via the `options` connection parameter. Valid values depend on the model (e.g., `none`, `low`, `medium`, `high`).
+By default, the server uses the lowest available reasoning effort for each model to minimize query latency. You can override this via the `options` connection parameter. Valid values depend on the model (e.g., `none`, `minimal`, `low`, `medium`, `high`).
 
 ```bash
 PGPASSWORD="sk-..." PGOPTIONS="reasoning_effort=high" psql -h localhost -U openai -d gpt-5.4
