@@ -13,7 +13,7 @@ import (
 type Connection struct {
 	conn      net.Conn
 	backend   *pgproto3.Backend
-	llmClient *LLMClient
+	llmClient LLMClient
 }
 
 // NewConnection creates a new Connection instance
@@ -55,31 +55,37 @@ func (c *Connection) Handle(ctx context.Context) error {
 		return fmt.Errorf("authentication failed: %w", err)
 	}
 
-	// Validate username
-	if username != "openai" {
+	// Validate provider (username)
+	provider := username
+	if provider != "openai" && provider != "anthropic" {
 		c.backend.Send(&pgproto3.ErrorResponse{
 			Severity: "FATAL",
 			Code:     "28000", // invalid_authorization_specification
-			Message:  "invalid username (must be 'openai')",
+			Message:  fmt.Sprintf("unsupported provider %q (must be 'openai' or 'anthropic')", provider),
 		})
 		c.backend.Flush()
-		return fmt.Errorf("invalid username: %s", username)
+		return fmt.Errorf("unsupported provider: %s", provider)
 	}
 
-	// Determine model from database name
+	// Model is required (specified as database name)
 	model := database
 	if model == "" {
-		model = "gpt-4o-2024-08-06" // default model
+		c.backend.Send(&pgproto3.ErrorResponse{
+			Severity: "FATAL",
+			Code:     "3D000", // invalid_catalog_name
+			Message:  "model is required (specify as database name)",
+		})
+		c.backend.Flush()
+		return fmt.Errorf("no model specified")
 	}
 
-	// Parse options for reasoning_effort
-	// Format: "reasoning_effort=medium" or "param1=value1 reasoning_effort=medium"
-	reasoningEffort := parseOptionValue(options, "reasoning_effort")
+	// Parse all options into a map
+	opts := parseOptions(options)
 
 	// Add connection-specific fields to logger
-	logger = LoggerFromContext(ctx).With("username", username, "database", database, "model", model)
-	if reasoningEffort != "" {
-		logger = logger.With("reasoning_effort", reasoningEffort)
+	logger = LoggerFromContext(ctx).With("provider", provider, "model", model)
+	if len(opts) > 0 {
+		logger = logger.With("options", opts)
 	}
 	ctx = ContextWithLogger(ctx, logger)
 	logger.Info("connection authenticated")
@@ -89,8 +95,15 @@ func (c *Connection) Handle(ctx context.Context) error {
 		return fmt.Errorf("failed to send startup messages: %w", err)
 	}
 
-	// Create per-connection LLM client with API key from password
-	c.llmClient = NewLLMClient(password, model, reasoningEffort)
+	// Create per-connection LLM client based on provider
+	var llmClient LLMClient
+	switch provider {
+	case "openai":
+		llmClient = NewOpenAILLMClient(password, model, opts)
+	case "anthropic":
+		llmClient = NewAnthropicLLMClient(password, model, opts)
+	}
+	c.llmClient = llmClient
 
 	// Enter query loop
 	for {
@@ -132,22 +145,19 @@ func (c *Connection) Handle(ctx context.Context) error {
 	}
 }
 
-// parseOptionValue extracts a key=value pair from a space-separated options string
-// For example: "reasoning_effort=medium other_param=value" -> parseOptionValue(..., "reasoning_effort") returns "medium"
-func parseOptionValue(options, key string) string {
+// parseOptions parses a space-separated options string into a map of key=value pairs.
+// For example: "reasoning_effort=medium effort=low" -> map["reasoning_effort"]="medium", map["effort"]="low"
+func parseOptions(options string) map[string]string {
+	result := make(map[string]string)
 	if options == "" {
-		return ""
+		return result
 	}
 
-	// Split by spaces to get individual key=value pairs
-	parts := strings.Fields(options)
-	prefix := key + "="
-
-	for _, part := range parts {
-		if value, found := strings.CutPrefix(part, prefix); found {
-			return value
+	for _, part := range strings.Fields(options) {
+		if key, value, ok := strings.Cut(part, "="); ok {
+			result[key] = value
 		}
 	}
 
-	return ""
+	return result
 }

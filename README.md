@@ -75,12 +75,47 @@ Example:
 psql "host=localhost user=openai password=sk-... dbname=gpt-5.4"
 ```
 
-### Reasoning effort
+## Supported providers
 
-By default, the server uses the lowest available reasoning effort for each model to minimize query latency. You can override this via the `options` connection parameter. Valid values depend on the model (e.g., `none`, `minimal`, `low`, `medium`, `high`).
+### OpenAI
+
+Username: `openai`. Password: your OpenAI API key. Database: any OpenAI model name (e.g. `gpt-5.4`, `gpt-4o`, `o3`).
+
+```bash
+PGPASSWORD="sk-..." psql -h localhost -U openai -d gpt-5.4
+```
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `reasoning_effort` | Reasoning effort level (e.g. `none`, `minimal`, `low`, `medium`, `high`). Valid values depend on the model. | Lowest supported for the model |
+
+### Anthropic
+
+Username: `anthropic`. Password: your Anthropic API key. Database: any Anthropic model name (e.g. `claude-sonnet-4-6`, `claude-opus-4-6`).
+
+```bash
+PGPASSWORD="sk-ant-..." psql -h localhost -U anthropic -d claude-sonnet-4-6
+```
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `effort` | Output effort level (`low`, `medium`, `high`, `max`) | `low` |
+| `thinking` | Extended thinking budget in tokens (minimum 1024) | Disabled |
+
+### Setting options
+
+Options are passed via the `options` connection parameter (`PGOPTIONS` env var or `options=` in the connection string). Multiple options are space-separated.
 
 ```bash
 PGPASSWORD="sk-..." PGOPTIONS="reasoning_effort=high" psql -h localhost -U openai -d gpt-5.4
+```
+
+```bash
+PGPASSWORD="sk-ant-..." PGOPTIONS="effort=high thinking=10000" psql -h localhost -U anthropic -d claude-opus-4-6
 ```
 
 ```bash
@@ -88,7 +123,7 @@ psql "postgres://openai:sk-...@localhost/gpt-5.4?options=reasoning_effort%3Dhigh
 ```
 
 ```bash
-psql "host=localhost user=openai password=sk-... dbname=gpt-5.4 options=reasoning_effort=high"
+psql "host=localhost user=anthropic password=sk-ant-... dbname=claude-sonnet-4-6 options=effort=high"
 ```
 
 ## How it works
@@ -97,4 +132,4 @@ Each client connection gets its own LLM chat session. The server translates Post
 
 ## Security note
 
-Authentication uses cleartext passwords because the server needs the actual API key to call OpenAI. Connect over localhost or use SSH tunneling when running remotely.
+Authentication uses cleartext passwords because the server needs the raw API key to call the LLM provider. Connect over localhost or use SSH tunneling when running remotely.

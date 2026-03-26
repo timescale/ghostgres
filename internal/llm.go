@@ -1,19 +1,32 @@
 package internal
 
-import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"strings"
-	"time"
+import "context"
 
-	"github.com/google/jsonschema-go/jsonschema"
-	"github.com/openai/openai-go/v3"
-	"github.com/openai/openai-go/v3/option"
-	"github.com/openai/openai-go/v3/shared"
-)
+// LLMClient is the interface for all LLM provider clients.
+type LLMClient interface {
+	Query(ctx context.Context, queryString string) (*LLMResponse, error)
+}
 
-// System prompt for the LLM
+// LLMResponse represents the structured output from the LLM
+type LLMResponse struct {
+	Results []ResultSet `json:"results"`
+}
+
+// ResultSet represents a single SQL statement's result
+type ResultSet struct {
+	Columns    []Column    `json:"columns"`
+	Rows       [][]*string `json:"rows"` // Array of arrays where each value is a string pointer (nil = NULL)
+	CommandTag string      `json:"command_tag"`
+}
+
+// Column represents a column definition
+type Column struct {
+	Name   string `json:"name"`
+	Type   string `json:"type"`
+	Length int16  `json:"length"`
+}
+
+// System prompt shared by all providers
 const systemPrompt = `You are a PostgreSQL database that responds to SQL queries. For each query,
 return results that are consistent with your previous responses in this session.
 Remember what data you've returned before and maintain consistency.
@@ -55,144 +68,3 @@ Example for "SELECT 1; INSERT INTO foo VALUES (1); SELECT 2;":
     {"columns": [{"name": "?column?", "type": "int4", "length": 4}], "rows": [["2"]], "command_tag": "SELECT 1"}
   ]
 }`
-
-// modelReasoningEffortPrefixes maps model name prefixes to the lowest supported
-// reasoning effort level. Entries are checked longest-prefix-first so that e.g.
-// "gpt-5.4" matches before "gpt-5". Models not matching any prefix (like gpt-4o
-// or gpt-4.1, which are non-reasoning models) will not have reasoning_effort set.
-var modelReasoningEffortPrefixes = []struct {
-	prefix string
-	effort string
-}{
-	// GPT-5.4 family — supports none, low, medium, high (default: none)
-	{"gpt-5.4-nano", "none"},
-	{"gpt-5.4-mini", "none"},
-	{"gpt-5.4", "none"},
-	// GPT-5.3 family
-	{"gpt-5.3", "none"},
-	// GPT-5.2 family — supports none, low, medium, high, xhigh (default: none)
-	{"gpt-5.2", "none"},
-	// GPT-5.1 family — supports none, low, medium, high (default: none)
-	{"gpt-5.1-mini", "none"},
-	{"gpt-5.1", "none"},
-	// GPT-5 family — supports minimal, low, medium, high (default: medium)
-	{"gpt-5-nano", "minimal"},
-	{"gpt-5-mini", "minimal"},
-	{"gpt-5", "minimal"},
-	// o-series — supports low, medium, high (default: medium)
-	{"o4-mini", "low"},
-	{"o3-pro", "low"},
-	{"o3-mini", "low"},
-	{"o3", "low"},
-	{"o1-pro", "low"},
-	{"o1", "low"},
-}
-
-// defaultReasoningEffort returns the lowest reasoning effort for the given model,
-// or an empty string if the model doesn't support reasoning effort.
-func defaultReasoningEffort(model string) string {
-	for _, entry := range modelReasoningEffortPrefixes {
-		if strings.HasPrefix(model, entry.prefix) {
-			return entry.effort
-		}
-	}
-	return ""
-}
-
-// LLMClient handles communication with the OpenAI API
-type LLMClient struct {
-	client          openai.Client
-	model           string
-	reasoningEffort string // empty string means don't set reasoning effort
-	history         []openai.ChatCompletionMessageParamUnion
-}
-
-// NewLLMClient creates a new LLM client with the specified API key, model, and optional reasoning effort.
-// If reasoningEffort is empty, the lowest supported effort for the model is used automatically.
-func NewLLMClient(apiKey string, model string, reasoningEffort string) *LLMClient {
-	client := openai.NewClient(option.WithAPIKey(apiKey))
-
-	// If no explicit reasoning effort provided, use the lowest for this model
-	if reasoningEffort == "" {
-		reasoningEffort = defaultReasoningEffort(model)
-	}
-
-	// Initialize chat history with system prompt
-	history := []openai.ChatCompletionMessageParamUnion{
-		openai.SystemMessage(systemPrompt),
-	}
-
-	return &LLMClient{
-		client:          client,
-		model:           model,
-		reasoningEffort: reasoningEffort,
-		history:         history,
-	}
-}
-
-// Query sends a query to the LLM and returns the structured response
-func (c *LLMClient) Query(ctx context.Context, queryString string) (*LLMResponse, error) {
-	logger := LoggerFromContext(ctx)
-	logger.Debug("calling LLM API", "model", c.model)
-
-	startTime := time.Now()
-
-	// Append user query to chat history
-	c.history = append(c.history, openai.UserMessage(queryString))
-
-	// Generate JSON schema from LLMResponse struct
-	schema, err := jsonschema.For[LLMResponse](nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate schema: %w", err)
-	}
-
-	// Build API request parameters
-	params := openai.ChatCompletionNewParams{
-		Messages: c.history,
-		Model:    shared.ChatModel(c.model),
-		ResponseFormat: openai.ChatCompletionNewParamsResponseFormatUnion{
-			OfJSONSchema: &shared.ResponseFormatJSONSchemaParam{
-				JSONSchema: shared.ResponseFormatJSONSchemaJSONSchemaParam{
-					Name:   "postgres_response",
-					Schema: schema,
-				},
-			},
-		},
-	}
-
-	// Only set ReasoningEffort if explicitly provided
-	if c.reasoningEffort != "" {
-		params.ReasoningEffort = shared.ReasoningEffort(c.reasoningEffort)
-	}
-
-	// Call OpenAI Chat Completions API with structured outputs
-	completion, err := c.client.Chat.Completions.New(ctx, params)
-	if err != nil {
-		return nil, fmt.Errorf("LLM API call failed: %w", err)
-	}
-
-	duration := time.Since(startTime)
-
-	// Extract the response content
-	if len(completion.Choices) == 0 {
-		return nil, fmt.Errorf("no choices in LLM response")
-	}
-
-	content := completion.Choices[0].Message.Content
-	logger.Debug("LLM API call complete",
-		"duration_ms", duration.Milliseconds(),
-		"prompt_tokens", completion.Usage.PromptTokens,
-		"completion_tokens", completion.Usage.CompletionTokens,
-	)
-
-	// Parse the response into LLMResponse struct
-	var response LLMResponse
-	if err := json.Unmarshal([]byte(content), &response); err != nil {
-		return nil, fmt.Errorf("failed to parse LLM response: %w", err)
-	}
-
-	// Append assistant response to chat history
-	c.history = append(c.history, openai.AssistantMessage(content))
-
-	return &response, nil
-}

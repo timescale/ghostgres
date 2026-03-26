@@ -7,27 +7,8 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 )
 
-// LLMResponse represents the structured output from the LLM
-type LLMResponse struct {
-	Results []ResultSet `json:"results"`
-}
-
-// ResultSet represents a single SQL statement's result
-type ResultSet struct {
-	Columns    []Column    `json:"columns"`
-	Rows       [][]*string `json:"rows"` // Array of arrays where each value is a string pointer (nil = NULL)
-	CommandTag string      `json:"command_tag"`
-}
-
-// Column represents a column definition
-type Column struct {
-	Name   string `json:"name"`
-	Type   string `json:"type"`
-	Length int16  `json:"length"`
-}
-
 // handleQuery processes a query and sends the response
-func handleQuery(ctx context.Context, backend *pgproto3.Backend, llmClient *LLMClient, queryString string) error {
+func handleQuery(ctx context.Context, backend *pgproto3.Backend, llmClient LLMClient, queryString string) error {
 	logger := LoggerFromContext(ctx)
 	logger.Info("query received")
 
