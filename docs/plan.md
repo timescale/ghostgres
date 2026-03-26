@@ -71,7 +71,7 @@ LLM (GPT-4, etc.)
   - Connections will detect cancellation and terminate gracefully with ErrorResponse
 
 ### 3. Connection Handler (`internal/connection.go`)
-- `Connection` struct holds: net.Conn, *pgproto3.Backend, *LLMClient
+- `Connection` struct holds: net.Conn, `*pgproto3.Backend`, `*LLMClient`
   - Does NOT store logger or context - both come via function parameters
 - `NewConnection(conn net.Conn)` constructor
   - Creates pgproto3.Backend: `pgproto3.NewBackend(conn, conn)`
