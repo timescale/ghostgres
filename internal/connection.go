@@ -50,7 +50,7 @@ func (c *Connection) Handle(ctx context.Context) error {
 	}()
 
 	// Perform authentication
-	username, password, database, options, err := authenticate(ctx, c.backend)
+	username, password, database, options, err := authenticate(ctx, c.conn, c.backend)
 	if err != nil {
 		return fmt.Errorf("authentication failed: %w", err)
 	}
