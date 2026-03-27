@@ -13,18 +13,10 @@ Just grab an API key for your favorite AI model provider, connect, and start que
 A wire-compatible PostgreSQL server that routes all queries to an LLM instead of executing them against a real database. Each connection maintains its own LLM context for consistency across queries.
 
 
-## Install
+## Run
 
 ```bash
-go install github.com/timescale/ghostgres/cmd/ghostgres@latest
-```
-
-## Usage
-
-Start the server:
-
-```bash
-ghostgres
+go run github.com/timescale/ghostgres/cmd/ghostgres@latest
 ```
 
 Flags:
