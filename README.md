@@ -18,7 +18,7 @@ Grab an API key for your favorite model provider, and connect:
 psql "postgres://openai:<OPENAI_API_KEY>@localhost/gpt-5.4"
 ```
 
-Now you can start querying:
+Then start querying:
 
 ```
 gpt-5.4=> What is the best database?;
