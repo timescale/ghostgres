@@ -49,7 +49,8 @@ All code lives in two packages:
 
 ### Key Patterns
 
-- **Logger via context**: All functions receive `context.Context` and extract the logger. Fields are added with `.With()` and the enriched logger is put back into context.
+- **Logger via context**: All functions receive `context.Context` and extract the logger. Fields are added with `.With()` and the enriched logger is put back into context. Uses `go.uber.org/zap`.
+- **Log message casing**: Log messages start with a capital letter. Error strings start with a lowercase letter (per Go convention).
 - **Simple Query Protocol only**: No extended query protocol (no prepared statements/parameter binding).
 - **Structured outputs**: LLM returns JSON matching `LLMResponse` struct (array of `ResultSet` with columns, rows as `[]*string` for null support, and command tags).
 - **Model reasoning effort defaults**: `modelReasoningEffortPrefixes` in llm.go maps model prefixes to their lowest reasoning effort. Non-reasoning models get no effort set.
@@ -60,3 +61,4 @@ All code lives in two packages:
 - `github.com/jackc/pgx/v5/pgtype` — type name → OID lookups
 - `github.com/openai/openai-go/v3` — OpenAI API client with structured outputs
 - `github.com/google/jsonschema-go` — JSON schema generation from Go structs
+- `go.uber.org/zap` — structured logging

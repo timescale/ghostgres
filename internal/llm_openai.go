@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
@@ -90,7 +92,7 @@ func NewOpenAILLMClient(apiKey string, model string, opts map[string]string, sys
 // Query sends a query to the OpenAI API and returns the structured response
 func (c *OpenAILLMClient) Query(ctx context.Context, queryString string) (*LLMResponse, error) {
 	logger := LoggerFromContext(ctx)
-	logger.Debug("calling OpenAI API", "model", c.model)
+	logger.Debug("Calling OpenAI API", zap.String("model", c.model))
 
 	startTime := time.Now()
 
@@ -131,9 +133,9 @@ func (c *OpenAILLMClient) Query(ctx context.Context, queryString string) (*LLMRe
 
 	content := completion.Choices[0].Message.Content
 	logger.Debug("OpenAI API call complete",
-		"duration_ms", duration.Milliseconds(),
-		"prompt_tokens", completion.Usage.PromptTokens,
-		"completion_tokens", completion.Usage.CompletionTokens,
+		zap.Int64("duration_ms", duration.Milliseconds()),
+		zap.Int64("prompt_tokens", completion.Usage.PromptTokens),
+		zap.Int64("completion_tokens", completion.Usage.CompletionTokens),
 	)
 
 	var response LLMResponse

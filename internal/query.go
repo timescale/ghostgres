@@ -4,18 +4,20 @@ import (
 	"context"
 	"fmt"
 
+	"go.uber.org/zap"
+
 	"github.com/jackc/pgx/v5/pgproto3"
 )
 
 // handleQuery processes a query and sends the response
 func handleQuery(ctx context.Context, backend *pgproto3.Backend, llmClient LLMClient, queryString string) error {
 	logger := LoggerFromContext(ctx)
-	logger.Info("query received")
+	logger.Info("Query received")
 
 	// Call LLM to get response
 	response, err := llmClient.Query(ctx, queryString)
 	if err != nil {
-		logger.Error("LLM query failed", "error", err)
+		logger.Error("LLM query failed", zap.Error(err))
 		backend.Send(buildErrorResponse("ERROR", "XX000", fmt.Sprintf("LLM API error: %v", err)))
 		backend.Send(&pgproto3.ReadyForQuery{TxStatus: 'I'})
 		backend.Flush()
@@ -28,11 +30,11 @@ func handleQuery(ctx context.Context, backend *pgproto3.Backend, llmClient LLMCl
 		for j, col := range resultSet.Columns {
 			columnNames[j] = col.Name
 		}
-		logger.Debug("result set",
-			"index", i,
-			"columns", columnNames,
-			"row_count", len(resultSet.Rows),
-			"command_tag", resultSet.CommandTag)
+		logger.Debug("Result set",
+			zap.Int("index", i),
+			zap.Strings("columns", columnNames),
+			zap.Int("row_count", len(resultSet.Rows)),
+			zap.String("command_tag", resultSet.CommandTag))
 
 		// Log each row
 		for rowIdx, row := range resultSet.Rows {
@@ -44,11 +46,11 @@ func handleQuery(ctx context.Context, backend *pgproto3.Backend, llmClient LLMCl
 					rowValues[colIdx] = *val
 				}
 			}
-			logger.Debug("row data", "result_set", i, "row", rowIdx, "values", rowValues)
+			logger.Debug("Row data", zap.Int("result_set", i), zap.Int("row", rowIdx), zap.Strings("values", rowValues))
 		}
 	}
 
-	logger.Info("sending query results")
+	logger.Info("Sending query results")
 
 	// Process each result set
 	for _, resultSet := range response.Results {
@@ -80,6 +82,6 @@ func handleQuery(ctx context.Context, backend *pgproto3.Backend, llmClient LLMCl
 		return fmt.Errorf("failed to flush query response: %w", err)
 	}
 
-	logger.Info("query complete")
+	logger.Info("Query complete")
 	return nil
 }

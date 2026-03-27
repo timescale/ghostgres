@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
 	"github.com/google/jsonschema-go/jsonschema"
@@ -54,7 +56,7 @@ func NewAnthropicLLMClient(apiKey string, model string, opts map[string]string, 
 // Query sends a query to the Anthropic API and returns the structured response
 func (c *AnthropicLLMClient) Query(ctx context.Context, queryString string) (*LLMResponse, error) {
 	logger := LoggerFromContext(ctx)
-	logger.Debug("calling Anthropic API", "model", c.model)
+	logger.Debug("Calling Anthropic API", zap.String("model", c.model))
 
 	startTime := time.Now()
 
@@ -111,9 +113,9 @@ func (c *AnthropicLLMClient) Query(ctx context.Context, queryString string) (*LL
 	}
 
 	logger.Debug("Anthropic API call complete",
-		"duration_ms", duration.Milliseconds(),
-		"input_tokens", message.Usage.InputTokens,
-		"output_tokens", message.Usage.OutputTokens,
+		zap.Int64("duration_ms", duration.Milliseconds()),
+		zap.Int64("input_tokens", message.Usage.InputTokens),
+		zap.Int64("output_tokens", message.Usage.OutputTokens),
 	)
 
 	var response LLMResponse

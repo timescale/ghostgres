@@ -6,6 +6,8 @@ import (
 	"math/rand"
 	"net"
 
+	"go.uber.org/zap"
+
 	"github.com/jackc/pgx/v5/pgproto3"
 )
 
@@ -25,7 +27,7 @@ func authenticate(ctx context.Context, conn net.Conn, backend *pgproto3.Backend)
 		if _, err := conn.Write([]byte("N")); err != nil {
 			return "", "", "", "", fmt.Errorf("failed to send SSL denial: %w", err)
 		}
-		logger.Debug("denied SSL request")
+		logger.Debug("Denied SSL request")
 
 		// Now receive the actual startup message
 		msg, err = backend.ReceiveStartupMessage()
@@ -45,7 +47,7 @@ func authenticate(ctx context.Context, conn net.Conn, backend *pgproto3.Backend)
 	database = startupMsg.Parameters["database"]
 	options = startupMsg.Parameters["options"]
 
-	logger.Info("authentication attempt", "username", username, "database", database, "options", options)
+	logger.Info("Authentication attempt", zap.String("username", username), zap.String("database", database), zap.String("options", options))
 
 	// Send cleartext password request
 	backend.Send(&pgproto3.AuthenticationCleartextPassword{})
@@ -115,6 +117,6 @@ func sendStartupMessages(ctx context.Context, backend *pgproto3.Backend) error {
 		return fmt.Errorf("failed to flush startup messages: %w", err)
 	}
 
-	logger.Info("startup sequence complete")
+	logger.Info("Startup sequence complete")
 	return nil
 }

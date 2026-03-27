@@ -6,6 +6,8 @@ import (
 	"net"
 	"strings"
 
+	"go.uber.org/zap"
+
 	"github.com/jackc/pgx/v5/pgproto3"
 )
 
@@ -34,7 +36,7 @@ func (c *Connection) Handle(ctx context.Context) error {
 	// Ensure connection is closed on exit
 	defer func() {
 		c.conn.Close()
-		logger.Info("connection closed")
+		logger.Info("Connection closed")
 	}()
 
 	// Defer sending termination message if context cancelled during operation
@@ -85,12 +87,12 @@ func (c *Connection) Handle(ctx context.Context) error {
 	opts := parseOptions(options)
 
 	// Add connection-specific fields to logger
-	logger = LoggerFromContext(ctx).With("provider", provider, "model", model)
+	logger = LoggerFromContext(ctx).With(zap.String("provider", provider), zap.String("model", model))
 	if len(opts) > 0 {
-		logger = logger.With("options", opts)
+		logger = logger.With(zap.Any("options", opts))
 	}
 	ctx = ContextWithLogger(ctx, logger)
-	logger.Info("connection authenticated")
+	logger.Info("Connection authenticated")
 
 	// Send startup messages
 	if err := sendStartupMessages(ctx, c.backend); err != nil {
@@ -132,17 +134,17 @@ func (c *Connection) Handle(ctx context.Context) error {
 		switch msg := msg.(type) {
 		case *pgproto3.Query:
 			queryString := msg.String
-			queryLogger := LoggerFromContext(ctx).With("query", queryString)
+			queryLogger := LoggerFromContext(ctx).With(zap.String("query", queryString))
 			queryCtx := ContextWithLogger(ctx, queryLogger)
 			if err := handleQuery(queryCtx, c.backend, c.llmClient, queryString); err != nil {
-				logger.Error("query handling failed", "error", err)
+				logger.Error("Query handling failed", zap.Error(err))
 				// Error response is already sent by handleQuery
 			}
 		case *pgproto3.Terminate:
-			logger.Info("client requested termination")
+			logger.Info("Client requested termination")
 			return nil
 		default:
-			logger.Warn("unsupported message type", "type", fmt.Sprintf("%T", msg))
+			logger.Warn("Unsupported message type", zap.String("type", fmt.Sprintf("%T", msg)))
 		}
 	}
 }

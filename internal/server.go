@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 	"sync"
+
+	"go.uber.org/zap"
 )
 
 // Server handles incoming TCP connections and manages connection lifecycle
@@ -41,14 +43,14 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 	defer listener.Close()
 
-	logger.Info("server listening", "address", address)
+	logger.Info("Server listening", zap.String("address", address))
 
 	// Accept connections in a loop
 	for {
 		// Check if context is cancelled
 		select {
 		case <-ctx.Done():
-			logger.Info("server stopping accept loop")
+			logger.Info("Server stopping accept loop")
 			return nil
 		default:
 		}
@@ -61,20 +63,21 @@ func (s *Server) Start(ctx context.Context) error {
 			case <-ctx.Done():
 				return nil
 			default:
-				logger.Error("failed to accept connection", "error", err)
+				logger.Error("Failed to accept connection", zap.Error(err))
 				continue
 			}
 		}
 
 		// Create child logger with remote address
-		connLogger := logger.With("remote_addr", conn.RemoteAddr().String())
+		connLogger := logger.With(zap.String("remote_addr", conn.RemoteAddr().String()))
 		connCtx := ContextWithLogger(s.connCtx, connLogger)
 
 		// Spawn goroutine to handle connection
 		s.wg.Go(func() {
 			connection := NewConnection(conn, s.systemPrompt)
 			if err := connection.Handle(connCtx); err != nil {
-				LoggerFromContext(connCtx).Error("connection error", "error", err)
+				logger := LoggerFromContext(connCtx)
+				logger.Error("Connection error", zap.Error(err))
 			}
 		})
 	}
