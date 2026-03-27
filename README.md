@@ -31,17 +31,7 @@ Just remember to end your queries with a semicolon (`;`).
 
 Oh, and be careful with single (`'`) and double quotes (`"`).
 
-## What is it?
-
-A PostgreSQL wire-protocol compatible server that routes all queries to an LLM instead of executing them against a real database. Each database connection maintains its own LLM context for consistency across queries.
-
-## Run
-
-```bash
-go run github.com/timescale/ghostgres/cmd/ghostgres@latest
-```
-
-Flags:
+## Flags:
 
 | Flag | Default | Description |
 |------|---------|-------------|
@@ -54,51 +44,17 @@ Flags:
 
 Connect using `psql` or any Postgres client. The username is the LLM provider, the password is your API key, and the database is the model name.
 
-### psql flags
-
-```bash
-PGPASSWORD=<api_key> psql -h localhost -U <provider> -d <model>
-```
-
-Example:
-
-```bash
-PGPASSWORD="sk-..." psql -h localhost -U openai -d gpt-5.4
-```
-
-### Connection URI
-
 ```bash
 psql "postgres://<provider>:<api_key>@localhost/<model>"
-```
-
-Example:
-
-```bash
-psql "postgres://openai:sk-...@localhost/gpt-5.4"
-```
-
-### Keyword/value connection string
-
-```bash
-psql "host=localhost user=<provider> password=<api_key> dbname=<model>"
-```
-
-Example:
-
-```bash
-psql "host=localhost user=openai password=sk-... dbname=gpt-5.4"
 ```
 
 ## Supported providers
 
 ### OpenAI
 
-Username: `openai`. Password: your OpenAI API key. Database: any OpenAI model name (e.g. `gpt-5.4`, `gpt-4o`, `o3`).
-
-```bash
-PGPASSWORD="sk-..." psql -h localhost -U openai -d gpt-5.4
-```
+Username: `openai`.
+Password: your OpenAI API key.
+Database: any OpenAI model name (e.g. `gpt-5.4`, `gpt-4o`, `o3`).
 
 **Options:**
 
@@ -108,11 +64,9 @@ PGPASSWORD="sk-..." psql -h localhost -U openai -d gpt-5.4
 
 ### Anthropic
 
-Username: `anthropic`. Password: your Anthropic API key. Database: any Anthropic model name (e.g. `claude-sonnet-4-6`, `claude-opus-4-6`).
-
-```bash
-PGPASSWORD="sk-ant-..." psql -h localhost -U anthropic -d claude-sonnet-4-6
-```
+Username: `anthropic`.
+Password: your Anthropic API key.
+Database: any Anthropic model name (e.g. `claude-sonnet-4-6`, `claude-opus-4-6`).
 
 **Options:**
 
@@ -126,19 +80,11 @@ PGPASSWORD="sk-ant-..." psql -h localhost -U anthropic -d claude-sonnet-4-6
 Options are passed via the `options` connection parameter (`PGOPTIONS` env var or `options=` in the connection string). Multiple options are space-separated.
 
 ```bash
-PGPASSWORD="sk-..." PGOPTIONS="reasoning_effort=high" psql -h localhost -U openai -d gpt-5.4
-```
-
-```bash
-PGPASSWORD="sk-ant-..." PGOPTIONS="effort=high thinking=10000" psql -h localhost -U anthropic -d claude-opus-4-6
-```
-
-```bash
 psql "postgres://openai:sk-...@localhost/gpt-5.4?options=reasoning_effort%3Dhigh"
-```
 
-```bash
-psql "host=localhost user=anthropic password=sk-ant-... dbname=claude-sonnet-4-6 options=effort=high"
+# Or:
+
+PGOPTIONS="reasoning_effort=high" psql "postgres://openai:sk-...@localhost/gpt-5.4"
 ```
 
 ## How it works
