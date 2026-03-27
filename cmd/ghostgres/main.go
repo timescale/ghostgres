@@ -9,7 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/timescale/agentic-postgres/internal"
+	"github.com/timescale/ghostgres/internal"
 )
 
 func main() {

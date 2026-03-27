@@ -1,4 +1,4 @@
-# Agentic Postgres - Implementation Plan
+# Ghostgres - Implementation Plan
 
 ## Project Overview
 
@@ -11,14 +11,14 @@ own LLM context for consistency across queries.
 ```
 Client (psql, etc.)
     ↓ Postgres Wire Protocol
-Server (agentic-postgres)
+Server (ghostgres)
     ↓ OpenAI API (structured outputs)
 LLM (GPT-4, etc.)
 ```
 
 ## Components
 
-### 1. Main Entry Point (`cmd/agentic-postgres/main.go`)
+### 1. Main Entry Point (`cmd/ghostgres/main.go`)
 - **Very thin wrapper** - delegates all logic to internal package
 - Parse command-line flags (host, port, log level, shutdown timeout)
 - Set up context with cancellation for graceful shutdown
@@ -338,7 +338,7 @@ backend := pgproto3.NewBackend(conn, conn)  // conn is net.Conn
    ```go
    backend.Send(&pgproto3.AuthenticationOk{})
    backend.Send(&pgproto3.BackendKeyData{ProcessID: rand.Int32(), SecretKey: rand.Int32()})
-   backend.Send(&pgproto3.ParameterStatus{Name: "server_version", Value: "16.0 (agentic-postgres)"})
+   backend.Send(&pgproto3.ParameterStatus{Name: "server_version", Value: "16.0 (ghostgres)"})
    backend.Send(&pgproto3.ParameterStatus{Name: "server_encoding", Value: "UTF8"})
    backend.Send(&pgproto3.ParameterStatus{Name: "client_encoding", Value: "UTF8"})
    backend.Send(&pgproto3.ParameterStatus{Name: "DateStyle", Value: "ISO, MDY"})
@@ -690,9 +690,9 @@ CREATE TABLE foo (id int);
 ## Files Structure
 
 ```
-agentic-postgres/
+ghostgres/
 ├── cmd/
-│   └── agentic-postgres
+│   └── ghostgres
 │       └── main.go                # Main entry point (thin wrapper)
 ├── internal/
 │   ├── server.go                  # Server: TCP listener, connection management, WaitGroup

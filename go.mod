@@ -1,4 +1,4 @@
-module github.com/timescale/agentic-postgres
+module github.com/timescale/ghostgres
 
 go 1.25.5
 

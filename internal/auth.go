@@ -86,7 +86,7 @@ func sendStartupMessages(ctx context.Context, backend *pgproto3.Backend) error {
 	// Send parameter statuses
 	backend.Send(&pgproto3.ParameterStatus{
 		Name:  "server_version",
-		Value: "16.0 (agentic-postgres)",
+		Value: "16.0 (ghostgres)",
 	})
 	backend.Send(&pgproto3.ParameterStatus{
 		Name:  "server_encoding",

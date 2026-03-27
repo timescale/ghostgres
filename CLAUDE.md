@@ -7,9 +7,9 @@ A wire-compatible PostgreSQL server that routes all queries to an LLM instead of
 ## Build & Run
 
 ```bash
-go install ./...                    # build (binary: agentic-postgres)
-agentic-postgres                    # run on default port 5432
-agentic-postgres -port 5433 -log-level debug  # custom port + debug logging
+go install ./...                    # build (binary: ghostgres)
+ghostgres                    # run on default port 5432
+ghostgres -port 5433 -log-level debug  # custom port + debug logging
 go fmt ./...                        # always run after editing Go code
 ```
 
@@ -34,7 +34,7 @@ Client (psql) → Postgres Wire Protocol → Server → OpenAI API (structured o
 ```
 
 All code lives in two packages:
-- `cmd/agentic-postgres/main.go` — thin entry point: flag parsing, signal handling, graceful shutdown
+- `cmd/ghostgres/main.go` — thin entry point: flag parsing, signal handling, graceful shutdown
 - `internal/` — all server logic
 
 ### Request Flow

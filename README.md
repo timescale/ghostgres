@@ -1,8 +1,8 @@
-# agentic-postgres
+# ghostgres
 
 Are you tired of maintaining your SQL database? Tired of having to write "syntactically correct" SQL queries? Tired of having to query tables that "actually exist"?
 
-Well look no further. We built agentic-postgres to be the database of the future. There's nothing to maintain. No special query language to learn. It never returns errors. And the only limits on what you can query are the limits of your own imagination.
+Well look no further. We built ghostgres to be the database of the future. There's nothing to maintain. No special query language to learn. It never returns errors. And the only limits on what you can query are the limits of your own imagination.
 
 And the best part? It's Postgres wire-compatible, so you can plug it in wherever you currently use Postgres.
 
@@ -16,7 +16,7 @@ A wire-compatible PostgreSQL server that routes all queries to an LLM instead of
 ## Install
 
 ```bash
-go install github.com/timescale/agentic-postgres/cmd/agentic-postgres@latest
+go install github.com/timescale/ghostgres/cmd/ghostgres@latest
 ```
 
 ## Usage
@@ -24,7 +24,7 @@ go install github.com/timescale/agentic-postgres/cmd/agentic-postgres@latest
 Start the server:
 
 ```bash
-agentic-postgres
+ghostgres
 ```
 
 Flags:
