@@ -16,13 +16,12 @@ func main() {
 	host := flag.String("host", "", "hostname/interface to bind to (default: all interfaces)")
 	port := flag.Int("port", 5432, "port to listen on")
 	level := flagLevel("log-level", slog.LevelInfo, "log level (debug, info, warn, error)")
-	promptFile := flag.String("prompt", "", "path to a file containing a custom system prompt")
+	promptFile := flag.String("prompt", "", "path to custom system prompt file")
 	flag.Parse()
 
 	// Initialize logger
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: *level,
-	}))
+	slog.SetLogLoggerLevel(*level)
+	logger := slog.Default()
 
 	// Set up context with cancellation for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
