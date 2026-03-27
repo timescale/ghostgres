@@ -155,7 +155,7 @@ func parseOptions(options string) map[string]string {
 		return result
 	}
 
-	for _, part := range strings.Fields(options) {
+	for part := range strings.FieldsSeq(options) {
 		if key, value, ok := strings.Cut(part, "="); ok {
 			result[key] = value
 		}

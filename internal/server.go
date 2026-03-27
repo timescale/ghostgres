@@ -71,14 +71,12 @@ func (s *Server) Start(ctx context.Context) error {
 		connCtx := ContextWithLogger(s.connCtx, connLogger)
 
 		// Spawn goroutine to handle connection
-		s.wg.Add(1)
-		go func() {
-			defer s.wg.Done()
+		s.wg.Go(func() {
 			connection := NewConnection(conn, s.systemPrompt)
 			if err := connection.Handle(connCtx); err != nil {
 				LoggerFromContext(connCtx).Error("connection error", "error", err)
 			}
-		}()
+		})
 	}
 }
 
