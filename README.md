@@ -1,17 +1,39 @@
-# ghostgres
+# Ghostgres
 
-Are you tired of maintaining your SQL database? Tired of having to write "syntactically correct" SQL queries? Tired of having to query tables that "actually exist"?
+Are you tired of maintaining your relational database? Tired of having to write "syntactically correct" SQL queries? Tired of having queries fail because tables "don't exist"?
 
-Well look no further. We built ghostgres to be the database of the future. There's nothing to maintain. No special query language to learn. It never returns errors. And the only limits on what you can query are the limits of your own imagination.
+Look no further. Ghostgres is the database of the future. There's nothing to maintain. No query language. It doesn't return errors. The only limits on what you can query are the limits of your imagination.
 
-And the best part? It's Postgres wire-compatible, so you can plug it in wherever you currently use Postgres.
+The best part? It's Postgres wire-compatible, so you can plug it in wherever you use Postgres.
 
-Just grab an API key for your favorite AI model provider, connect, and start querying. It's really that simple.
+Just start the server:
+
+```bash
+go run github.com/timescale/ghostgres/cmd/ghostgres@latest
+```
+
+Grab an API key for your favorite model provider, and connect:
+
+```
+psql "postgres://openai:<OPENAI_API_KEY>@localhost/gpt-5.4"
+```
+
+You should see:
+
+```
+psql (17.7 (Homebrew), server 16.0 (Ghostgres))
+Type "help" for help.
+
+gpt-5.4=> 
+```
+
+Just remember to end your queries with a semicolon (`;`).
+
+Oh, and be careful with single (`'`) and double quotes (`"`).
 
 ## What is it?
 
-A wire-compatible PostgreSQL server that routes all queries to an LLM instead of executing them against a real database. Each connection maintains its own LLM context for consistency across queries.
-
+A PostgreSQL wire-protocol compatible server that routes all queries to an LLM instead of executing them against a real database. Each database connection maintains its own LLM context for consistency across queries.
 
 ## Run
 

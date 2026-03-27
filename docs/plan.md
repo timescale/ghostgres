@@ -11,7 +11,7 @@ own LLM context for consistency across queries.
 ```
 Client (psql, etc.)
     ↓ Postgres Wire Protocol
-Server (ghostgres)
+Server (Ghostgres)
     ↓ OpenAI API (structured outputs)
 LLM (GPT-4, etc.)
 ```
@@ -338,7 +338,7 @@ backend := pgproto3.NewBackend(conn, conn)  // conn is net.Conn
    ```go
    backend.Send(&pgproto3.AuthenticationOk{})
    backend.Send(&pgproto3.BackendKeyData{ProcessID: rand.Int32(), SecretKey: rand.Int32()})
-   backend.Send(&pgproto3.ParameterStatus{Name: "server_version", Value: "16.0 (ghostgres)"})
+   backend.Send(&pgproto3.ParameterStatus{Name: "server_version", Value: "16.0 (Ghostgres)"})
    backend.Send(&pgproto3.ParameterStatus{Name: "server_encoding", Value: "UTF8"})
    backend.Send(&pgproto3.ParameterStatus{Name: "client_encoding", Value: "UTF8"})
    backend.Send(&pgproto3.ParameterStatus{Name: "DateStyle", Value: "ISO, MDY"})
