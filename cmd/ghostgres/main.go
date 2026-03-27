@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -16,29 +15,13 @@ func main() {
 	// Parse command-line flags
 	host := flag.String("host", "", "hostname/interface to bind to (default: all interfaces)")
 	port := flag.Int("port", 5432, "port to listen on")
-	logLevel := flag.String("log-level", "info", "log level (debug, info, warn, error)")
+	level := flagLevel("log-level", slog.LevelInfo, "log level (debug, info, warn, error)")
 	promptFile := flag.String("prompt", "", "path to a file containing a custom system prompt")
 	flag.Parse()
 
-	// Parse log level
-	var level slog.Level
-	switch *logLevel {
-	case "debug":
-		level = slog.LevelDebug
-	case "info":
-		level = slog.LevelInfo
-	case "warn":
-		level = slog.LevelWarn
-	case "error":
-		level = slog.LevelError
-	default:
-		fmt.Fprintf(os.Stderr, "invalid log level: %s\n", *logLevel)
-		os.Exit(1)
-	}
-
 	// Initialize logger
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: level,
+		Level: *level,
 	}))
 
 	// Set up context with cancellation for graceful shutdown
@@ -84,4 +67,10 @@ func main() {
 	server.Close()
 
 	logger.Info("shutdown complete")
+}
+
+func flagLevel(name string, value slog.Level, usage string) *slog.Level {
+	p := new(slog.Level)
+	flag.TextVar(p, name, value, usage)
+	return p
 }
