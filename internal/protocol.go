@@ -28,7 +28,7 @@ func buildRowDescription(columns []Column) *pgproto3.RowDescription {
 			TableOID:             0,
 			TableAttributeNumber: 0,
 			DataTypeOID:          typeNameToOID(col.Type),
-			DataTypeSize:         col.Length,
+			DataTypeSize:         int16(col.Length),
 			TypeModifier:         -1,
 			Format:               0, // text format
 		}

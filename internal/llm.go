@@ -31,5 +31,5 @@ type ResultSet struct {
 type Column struct {
 	Name   string `json:"name" jsonschema:"column name"`
 	Type   string `json:"type" jsonschema:"PostgreSQL type name: text, int4, int8, float8, float4, int2, bool, timestamp, date, uuid, varchar"`
-	Length int16  `json:"length" jsonschema:"type length in bytes; use -1 for variable-length types (text, varchar), standard size for fixed (e.g. 4 for int4)"`
+	Length int    `json:"length" jsonschema:"type length in bytes; use -1 for variable-length types (text, varchar), standard size for fixed (e.g. 4 for int4)"`
 }
