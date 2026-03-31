@@ -28,6 +28,8 @@ Just remember to end your queries with a semicolon (`;`).
 
 Oh, and be careful with single (`'`) and double quotes (`"`).
 
+**From the people who built [Ghost](https://ghost.build).**
+
 ## Flags:
 
 | Flag | Default | Description |
