@@ -34,7 +34,7 @@ psql "postgres://<provider>:<api_key>@try.ghostgres.com/<model>"
 
 ## Running Locally
 
-You can run the server locally with:
+You can run the Ghostgres server locally with:
 
 ```bash
 go run github.com/timescale/ghostgres/cmd/ghostgres@latest
