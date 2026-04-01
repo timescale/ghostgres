@@ -38,6 +38,8 @@ Oh, and be careful with single (`'`) and double quotes (`"`).
 | `-port` | `5432` | Port to listen on |
 | `-log-level` | `info` | Log level (`debug`, `info`, `warn`, `error`) |
 | `-prompt` | Built-in prompt | Path to a file containing a custom system prompt |
+| `-tls-cert` | (disabled) | Path to TLS certificate PEM file (requires `-tls-key`) |
+| `-tls-key` | (disabled) | Path to TLS private key PEM file (requires `-tls-cert`) |
 
 ## Connecting
 
@@ -90,6 +92,18 @@ PGOPTIONS="reasoning_effort=high" psql "postgres://openai:sk-...@localhost/gpt-5
 
 Each client connection gets its own LLM chat session. The server translates Postgres wire protocol messages into LLM API calls and converts the structured JSON responses back into proper Postgres result sets. Chat history is maintained per connection, so the LLM can stay consistent across queries within a session.
 
+## SSL/TLS
+
+Ghostgres supports optional SSL/TLS encryption via the PostgreSQL wire protocol's `SSLRequest` handshake. When enabled, clients that request SSL (e.g. `sslmode=require`) will have their connections upgraded to TLS before any credentials are sent.
+
+To enable TLS, provide a certificate and private key:
+
+```bash
+ghostgres -tls-cert /path/to/cert.pem -tls-key /path/to/key.pem
+```
+
+When TLS is not enabled, SSL requests from clients are denied and the connection continues in plaintext. Clients using `sslmode=prefer` (the default for most Postgres clients) will fall back to an unencrypted connection automatically.
+
 ## Security note
 
-Authentication uses cleartext passwords because the server needs the raw API key to call the LLM provider. Connect over localhost or use SSH tunneling when running remotely.
+Authentication uses cleartext passwords because the server needs the raw API key to call the LLM provider. When running remotely, enable TLS (see above) to encrypt the connection. Without TLS, connect over localhost or use SSH tunneling.

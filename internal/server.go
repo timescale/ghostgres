@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"sync"
@@ -14,17 +15,20 @@ type Server struct {
 	host         string
 	port         int
 	systemPrompt string // custom system prompt; empty means use default
+	tlsConfig    *tls.Config
 	wg           sync.WaitGroup
 	connCtx      context.Context
 	connCancel   context.CancelFunc
 }
 
-// NewServer creates a new Server instance
-func NewServer(host string, port int, systemPrompt string) *Server {
+// NewServer creates a new Server instance. If tlsConfig is non-nil, the server
+// will accept SSL upgrades during the PostgreSQL startup handshake.
+func NewServer(host string, port int, systemPrompt string, tlsConfig *tls.Config) *Server {
 	return &Server{
 		host:         host,
 		port:         port,
 		systemPrompt: systemPrompt,
+		tlsConfig:    tlsConfig,
 	}
 }
 
@@ -74,7 +78,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 		// Spawn goroutine to handle connection
 		s.wg.Go(func() {
-			connection := NewConnection(conn, s.systemPrompt)
+			connection := NewConnection(conn, s.systemPrompt, s.tlsConfig)
 			if err := connection.Handle(connCtx); err != nil {
 				logger := LoggerFromContext(connCtx)
 				logger.Error("Connection error", zap.Error(err))

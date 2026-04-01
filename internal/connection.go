@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"strings"
@@ -17,15 +18,17 @@ type Connection struct {
 	backend      *pgproto3.Backend
 	llmClient    LLMClient
 	systemPrompt string // custom system prompt; empty means use default
+	tlsConfig    *tls.Config
 }
 
 // NewConnection creates a new Connection instance
-func NewConnection(conn net.Conn, systemPrompt string) *Connection {
+func NewConnection(conn net.Conn, systemPrompt string, tlsConfig *tls.Config) *Connection {
 	backend := pgproto3.NewBackend(conn, conn)
 	return &Connection{
 		conn:         conn,
 		backend:      backend,
 		systemPrompt: systemPrompt,
+		tlsConfig:    tlsConfig,
 	}
 }
 
@@ -53,11 +56,12 @@ func (c *Connection) Handle(ctx context.Context) error {
 		}
 	}()
 
-	// Perform authentication
-	username, password, database, options, err := authenticate(ctx, c.conn, c.backend)
+	// Perform authentication (may upgrade connection to TLS)
+	username, password, database, options, backend, err := authenticate(ctx, c.conn, c.backend, c.tlsConfig)
 	if err != nil {
 		return fmt.Errorf("authentication failed: %w", err)
 	}
+	c.backend = backend
 
 	// Validate provider (username)
 	provider := username

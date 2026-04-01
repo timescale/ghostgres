@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"flag"
 	"log"
 	"os"
@@ -21,6 +22,8 @@ func main() {
 	logLevel := flagLevel("log-level", zapcore.InfoLevel, "log level (debug, info, warn, error)")
 	logFormat := flagFormat("log-format", internal.LogFormatConsole, "log format (console, json)")
 	promptFile := flag.String("prompt", "", "path to custom system prompt file")
+	tlsCert := flag.String("tls-cert", "", "path to TLS certificate PEM file (enables TLS when set with -tls-key)")
+	tlsKey := flag.String("tls-key", "", "path to TLS private key PEM file (enables TLS when set with -tls-cert)")
 	flag.Parse()
 
 	// Initialize logger
@@ -46,8 +49,23 @@ func main() {
 		systemPrompt = string(data)
 	}
 
+	// Load TLS config if cert and key file paths are provided
+	var tlsConfig *tls.Config
+	if *tlsCert != "" && *tlsKey != "" {
+		cert, err := tls.LoadX509KeyPair(*tlsCert, *tlsKey)
+		if err != nil {
+			logger.Fatal("Failed to load TLS certificate", zap.Error(err))
+		}
+		tlsConfig = &tls.Config{
+			Certificates: []tls.Certificate{cert},
+		}
+		logger.Info("TLS enabled")
+	} else if *tlsCert != "" || *tlsKey != "" {
+		logger.Fatal("Both -tls-cert and -tls-key must be provided to enable TLS")
+	}
+
 	// Create server
-	server := internal.NewServer(*host, *port, systemPrompt)
+	server := internal.NewServer(*host, *port, systemPrompt, tlsConfig)
 
 	// Start server in goroutine
 	go func() {

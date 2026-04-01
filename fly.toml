@@ -3,6 +3,18 @@ primary_region = "iad"
 
 [build]
 
+# Mount TLS cert/key from Fly secrets as files
+[[files]]
+  guest_path = "/etc/tls/tls.crt"
+  secret_name = "TLS_CERT"
+
+[[files]]
+  guest_path = "/etc/tls/tls.key"
+  secret_name = "TLS_KEY"
+
+[experimental]
+  entrypoint = ["./ghostgres", "-tls-cert", "/etc/tls/tls.crt", "-tls-key", "/etc/tls/tls.key"]
+
 [[services]]
   protocol = "tcp"
   internal_port = 5432
