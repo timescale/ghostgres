@@ -52,7 +52,7 @@ psql "postgres://<provider>:<api_key>@localhost/<model>"
 ### OpenAI
 
 Username: `openai`.
-Password: your OpenAI API key.
+Password: your [OpenAI API key](https://platform.openai.com/api-keys).
 Database: any OpenAI model name (e.g. `gpt-5.4`, `gpt-4o`, `o3`).
 
 **Options:**
@@ -64,7 +64,7 @@ Database: any OpenAI model name (e.g. `gpt-5.4`, `gpt-4o`, `o3`).
 ### Anthropic
 
 Username: `anthropic`.
-Password: your Anthropic API key.
+Password: your [Anthropic API key](https://platform.claude.com/settings/keys).
 Database: any Anthropic model name (e.g. `claude-sonnet-4-6`, `claude-opus-4-6`).
 
 **Options:**
