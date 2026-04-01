@@ -6,16 +6,10 @@ Look no further. Ghostgres is the database of the future. There's nothing to mai
 
 The best part? It's Postgres wire-compatible, so you can plug it in wherever you use Postgres.
 
-Just start the server:
+Just grab an API key for your favorite model provider and connect:
 
 ```bash
-go run github.com/timescale/ghostgres/cmd/ghostgres@latest
-```
-
-Grab an API key for your favorite model provider, and connect:
-
-```
-psql "postgres://openai:<OPENAI_API_KEY>@localhost/gpt-5.4"
+psql "postgres://openai:<OPENAI_API_KEY>@try.ghostgres.com/gpt-5.4"
 ```
 
 Then start querying:
@@ -30,7 +24,31 @@ Oh, and be careful with single (`'`) and double quotes (`"`).
 
 **Built with <3 by [Ghost](https://ghost.build).**
 
-## Flags:
+## Connecting
+
+Connect using `psql` or any Postgres client. The username is the LLM provider (`openai` or `anthropic`), the password is your API key, and the database is the model name.
+
+```bash
+psql "postgres://<provider>:<api_key>@try.ghostgres.com/<model>"
+```
+
+## Running Locally
+
+You can run the server locally with:
+
+```bash
+go run github.com/timescale/ghostgres/cmd/ghostgres@latest
+```
+
+Then connect to localhost:
+
+```bash
+psql "postgres://openai:<OPENAI_API_KEY>@localhost/gpt-5.4"
+```
+
+### Flags:
+
+The server accepts the following flags:
 
 | Flag | Default | Description |
 |------|---------|-------------|
@@ -40,14 +58,6 @@ Oh, and be careful with single (`'`) and double quotes (`"`).
 | `-prompt` | Built-in prompt | Path to a file containing a custom system prompt |
 | `-tls-cert` | (disabled) | Path to TLS certificate PEM file (requires `-tls-key`) |
 | `-tls-key` | (disabled) | Path to TLS private key PEM file (requires `-tls-cert`) |
-
-## Connecting
-
-Connect using `psql` or any Postgres client. The username is the LLM provider, the password is your API key, and the database is the model name.
-
-```bash
-psql "postgres://<provider>:<api_key>@localhost/<model>"
-```
 
 ## Supported providers
 
