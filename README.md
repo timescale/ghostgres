@@ -2,7 +2,7 @@
 
 Are you tired of maintaining your relational database? Tired of having to write "syntactically correct" SQL queries? Tired of having queries fail because tables "don't exist"?
 
-Look no further. Ghostgres is the database of the future. There's nothing to maintain. No query language. It doesn't return errors. The only limits on what you can query are the limits of your imagination.
+Look no further. [Ghostgres](https://ghostgres.com) is the database of the future. There's nothing to maintain. No query language. It doesn't return errors. The only limits on what you can query are the limits of your imagination.
 
 The best part? It's Postgres wire-compatible, so you can plug it in wherever you use Postgres.
 
