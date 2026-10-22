@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.26
+ARG GO_VERSION=1.27
 
 # When performing a multi-platform build, leverage Go's built-in support for
 # cross-compilation instead of relying on emulation (which is much slower).

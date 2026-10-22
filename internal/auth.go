@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"crypto/tls"
+	"encoding/binary"
 	"fmt"
 	"math/rand"
 	"net"
@@ -99,7 +100,7 @@ func sendStartupMessages(ctx context.Context, backend *pgproto3.Backend) error {
 	// Send backend key data (random values for MVP)
 	backend.Send(&pgproto3.BackendKeyData{
 		ProcessID: uint32(rand.Int31()),
-		SecretKey: uint32(rand.Int31()),
+		SecretKey: binary.BigEndian.AppendUint32(nil, rand.Uint32()),
 	})
 
 	// Send parameter statuses
