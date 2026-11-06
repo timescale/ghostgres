@@ -9,7 +9,7 @@ The best part? It's Postgres wire-compatible, so you can plug it in wherever you
 Just grab an API key for your favorite model provider and connect:
 
 ```bash
-psql "postgres://openai:<OPENAI_API_KEY>@try.ghostgres.com/gpt-5.4"
+psql "postgres://openai:<OPENAI_API_KEY>@try.ghostgres.com/gpt-5.4?sslmode=verify-full&sslrootcert=system"
 ```
 
 Then start querying:
@@ -29,8 +29,10 @@ Oh, and be careful with single (`'`) and double quotes (`"`).
 Connect using `psql` or any Postgres client. The username is the LLM provider (`openai` or `anthropic`), the password is your API key, and the database is the model name.
 
 ```bash
-psql "postgres://<provider>:<api_key>@try.ghostgres.com/<model>"
+psql "postgres://<provider>:<api_key>@try.ghostgres.com/<model>?sslmode=verify-full&sslrootcert=system"
 ```
+
+Keep `sslmode=verify-full&sslrootcert=system` in the connection string: your API key is sent as the password, and these settings ensure it only goes to the real server over an encrypted connection. `sslrootcert=system` (which tells the client to trust the operating system's certificate authorities) requires libpq 16 or newer. With older clients, download the [ISRG Root X1](https://letsencrypt.org/certs/isrgrootx1.pem) certificate and pass its path as `sslrootcert` instead.
 
 ## Running Locally
 
@@ -58,6 +60,10 @@ The server accepts the following flags:
 | `-prompt` | Built-in prompt | Path to a file containing a custom system prompt |
 | `-tls-cert` | (disabled) | Path to TLS certificate PEM file (requires `-tls-key`) |
 | `-tls-key` | (disabled) | Path to TLS private key PEM file (requires `-tls-cert`) |
+| `-acme-domain` | (disabled) | Domain to automatically obtain a Let's Encrypt certificate for (requires `-acme-cache-dir`) |
+| `-acme-cache-dir` | `""` | Directory to persist ACME certificates and account key in |
+| `-acme-email` | `""` | Contact email for the ACME account |
+| `-acme-http-addr` | `:80` | Address to serve ACME HTTP-01 challenges on (must be reachable on port 80 of the domain) |
 
 ## Supported providers
 
@@ -104,7 +110,7 @@ Each client connection gets its own LLM chat session. The server translates Post
 
 ## SSL/TLS
 
-Ghostgres supports optional SSL/TLS encryption via the PostgreSQL wire protocol's `SSLRequest` handshake. When enabled, clients that request SSL (e.g. `sslmode=require`) will have their connections upgraded to TLS before any credentials are sent.
+Ghostgres supports SSL/TLS encryption via the PostgreSQL wire protocol's `SSLRequest` handshake. When TLS is enabled, it is required: clients that don't request SSL are rejected before any credentials are sent.
 
 To enable TLS, provide a certificate and private key:
 
@@ -112,8 +118,14 @@ To enable TLS, provide a certificate and private key:
 ghostgres -tls-cert /path/to/cert.pem -tls-key /path/to/key.pem
 ```
 
-When TLS is not enabled, SSL requests from clients are denied and the connection continues in plaintext. Clients using `sslmode=prefer` (the default for most Postgres clients) will fall back to an unencrypted connection automatically.
+Or have Ghostgres obtain and renew a certificate from Let's Encrypt automatically. Port 80 of the domain must reach `-acme-http-addr` to answer HTTP-01 challenges, and the cache directory should persist across restarts:
+
+```bash
+ghostgres -acme-domain db.example.com -acme-cache-dir /var/lib/ghostgres/acme
+```
+
+When TLS is not enabled, SSL requests from clients are denied and the connection continues in plaintext.
 
 ## Security note
 
-Authentication uses cleartext passwords because the server needs the raw API key to call the LLM provider. When running remotely, enable TLS (see above) to encrypt the connection. Without TLS, connect over localhost or use SSH tunneling.
+Authentication uses cleartext passwords because the server needs the raw API key to call the LLM provider. When running remotely, enable TLS (see above) and connect with `sslmode=verify-full`. Weaker modes such as `prefer` or `require` don't verify the server's certificate, so an attacker on the network can intercept the connection and capture the API key. Without TLS, connect over localhost or use SSH tunneling.
