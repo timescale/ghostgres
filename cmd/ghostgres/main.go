@@ -24,6 +24,10 @@ func main() {
 	promptFile := flag.String("prompt", "", "path to custom system prompt file")
 	tlsCert := flag.String("tls-cert", "", "path to TLS certificate PEM file (enables TLS when set with -tls-key)")
 	tlsKey := flag.String("tls-key", "", "path to TLS private key PEM file (enables TLS when set with -tls-cert)")
+	acmeDomain := flag.String("acme-domain", "", "domain to obtain a Let's Encrypt certificate for (enables TLS; requires -acme-cache-dir)")
+	acmeCacheDir := flag.String("acme-cache-dir", "", "directory to persist ACME certificates and account key in")
+	acmeEmail := flag.String("acme-email", "", "contact email for the ACME account (optional)")
+	acmeHTTPAddr := flag.String("acme-http-addr", ":80", "address to serve ACME HTTP-01 challenges on")
 	flag.Parse()
 
 	// Initialize logger
@@ -49,9 +53,24 @@ func main() {
 		systemPrompt = string(data)
 	}
 
-	// Load TLS config if cert and key file paths are provided
+	// Load TLS config from cert and key files, or obtain certificates via ACME
 	var tlsConfig *tls.Config
-	if *tlsCert != "" && *tlsKey != "" {
+	if *acmeDomain != "" {
+		if *tlsCert != "" || *tlsKey != "" {
+			logger.Fatal("-acme-domain cannot be combined with -tls-cert or -tls-key")
+		}
+		if *acmeCacheDir == "" {
+			logger.Fatal("-acme-cache-dir is required with -acme-domain")
+		}
+		acme := internal.NewACME(*acmeDomain, *acmeCacheDir, *acmeEmail, *acmeHTTPAddr)
+		tlsConfig = acme.TLSConfig()
+		go func() {
+			if err := acme.Serve(ctx); err != nil {
+				logger.Fatal("ACME error", zap.Error(err))
+			}
+		}()
+		logger.Info("TLS enabled via ACME", zap.String("domain", *acmeDomain))
+	} else if *tlsCert != "" && *tlsKey != "" {
 		cert, err := tls.LoadX509KeyPair(*tlsCert, *tlsKey)
 		if err != nil {
 			logger.Fatal("Failed to load TLS certificate", zap.Error(err))
