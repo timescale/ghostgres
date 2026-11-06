@@ -66,11 +66,6 @@ func (a *ACME) Serve(ctx context.Context) error {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	go func() {
-		<-ctx.Done()
-		server.Close()
-	}()
-
-	go func() {
 		// The cipher suite makes autocert pick the ECDSA certificate that
 		// real clients will be served.
 		_, err := a.manager.GetCertificate(&tls.ClientHelloInfo{
@@ -85,8 +80,21 @@ func (a *ACME) Serve(ctx context.Context) error {
 	}()
 
 	logger.Info("ACME HTTP challenge server listening", zap.String("address", a.httpAddr))
-	if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	serveErr := make(chan error, 1)
+	go func() {
+		serveErr <- server.Serve(listener)
+	}()
+
+	select {
+	case err := <-serveErr:
 		return fmt.Errorf("ACME HTTP challenge server failed: %w", err)
+	case <-ctx.Done():
+		if err := server.Close(); err != nil {
+			return fmt.Errorf("failed to close ACME HTTP challenge server: %w", err)
+		}
+		if err := <-serveErr; !errors.Is(err, http.ErrServerClosed) {
+			return fmt.Errorf("ACME HTTP challenge server failed: %w", err)
+		}
+		return nil
 	}
-	return nil
 }
