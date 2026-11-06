@@ -57,14 +57,15 @@ func (a *ACME) TLSConfig() *tls.Config {
 func (a *ACME) Serve(ctx context.Context) error {
 	logger := LoggerFromContext(ctx)
 
-	listener, err := net.Listen("tcp", a.tlsAddr)
-	if err != nil {
-		return fmt.Errorf("failed to listen on %s: %w", a.tlsAddr, err)
-	}
 	// Handshake errors from internet scanners are common and uninteresting.
 	errorLog, err := zap.NewStdLogAt(logger, zap.DebugLevel)
 	if err != nil {
 		return fmt.Errorf("failed to create ACME challenge server logger: %w", err)
+	}
+
+	listener, err := net.Listen("tcp", a.tlsAddr)
+	if err != nil {
+		return fmt.Errorf("failed to listen on %s: %w", a.tlsAddr, err)
 	}
 
 	// Challenges are answered during the TLS handshake; nothing is served
