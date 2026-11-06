@@ -14,7 +14,8 @@ import (
 )
 
 // authenticate performs the authentication flow and returns username, password, database, and options.
-// If tlsConfig is non-nil and the client sends an SSLRequest, the connection is upgraded to TLS.
+// If tlsConfig is non-nil, TLS is required: the client must send an SSLRequest, and the connection is
+// rejected before the password is requested otherwise, since the password is the caller's API key.
 func authenticate(ctx context.Context, conn net.Conn, backend *pgproto3.Backend, tlsConfig *tls.Config) (username, password, database, options string, upgradedBackend *pgproto3.Backend, err error) {
 	logger := LoggerFromContext(ctx)
 
@@ -25,6 +26,7 @@ func authenticate(ctx context.Context, conn net.Conn, backend *pgproto3.Backend,
 	}
 
 	// Handle SSLRequest
+	usingTLS := false
 	if _, ok := msg.(*pgproto3.SSLRequest); ok {
 		if tlsConfig != nil {
 			// Accept SSL: send 'Y' and upgrade the connection
@@ -36,6 +38,7 @@ func authenticate(ctx context.Context, conn net.Conn, backend *pgproto3.Backend,
 				return "", "", "", "", nil, fmt.Errorf("TLS handshake failed: %w", err)
 			}
 			logger.Debug("TLS handshake complete")
+			usingTLS = true
 
 			// Replace the backend to read/write over the TLS connection
 			backend = pgproto3.NewBackend(tlsConn, tlsConn)
@@ -58,6 +61,16 @@ func authenticate(ctx context.Context, conn net.Conn, backend *pgproto3.Backend,
 	startupMsg, ok := msg.(*pgproto3.StartupMessage)
 	if !ok {
 		return "", "", "", "", nil, fmt.Errorf("expected StartupMessage, got %T", msg)
+	}
+
+	if tlsConfig != nil && !usingTLS {
+		backend.Send(&pgproto3.ErrorResponse{
+			Severity: "FATAL",
+			Code:     "28000", // invalid_authorization_specification
+			Message:  "SSL is required (connect with sslmode=verify-full and sslrootcert=system)",
+		})
+		backend.Flush()
+		return "", "", "", "", nil, fmt.Errorf("client did not request SSL")
 	}
 
 	// Extract username, database, and options from parameters

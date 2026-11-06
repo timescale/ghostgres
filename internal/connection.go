@@ -6,11 +6,16 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"time"
 
 	"go.uber.org/zap"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 )
+
+// handshakeTimeout bounds the TLS negotiation and authentication phase. It is
+// generous because the first TLS handshake may include ACME certificate issuance.
+const handshakeTimeout = 30 * time.Second
 
 // Connection represents a single client connection
 type Connection struct {
@@ -55,6 +60,10 @@ func (c *Connection) Handle(ctx context.Context) error {
 		default:
 		}
 	}()
+
+	if err := c.conn.SetDeadline(time.Now().Add(handshakeTimeout)); err != nil {
+		return fmt.Errorf("failed to set handshake deadline: %w", err)
+	}
 
 	// Perform authentication (may upgrade connection to TLS)
 	username, password, database, options, backend, err := authenticate(ctx, c.conn, c.backend, c.tlsConfig)
@@ -101,6 +110,10 @@ func (c *Connection) Handle(ctx context.Context) error {
 	// Send startup messages
 	if err := sendStartupMessages(ctx, c.backend); err != nil {
 		return fmt.Errorf("failed to send startup messages: %w", err)
+	}
+
+	if err := c.conn.SetDeadline(time.Time{}); err != nil {
+		return fmt.Errorf("failed to clear handshake deadline: %w", err)
 	}
 
 	// Create per-connection LLM client based on provider

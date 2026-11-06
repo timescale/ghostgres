@@ -3,17 +3,14 @@ primary_region = "iad"
 
 [build]
 
-# Mount TLS cert/key from Fly secrets as files
-[[files]]
-  guest_path = "/etc/tls/tls.crt"
-  secret_name = "TLS_CERT"
-
-[[files]]
-  guest_path = "/etc/tls/tls.key"
-  secret_name = "TLS_KEY"
+# Persists ACME certificates and account key across restarts. Each machine has
+# its own volume (and therefore its own certificate).
+[mounts]
+  source = "ghostgres_data"
+  destination = "/data"
 
 [experimental]
-  entrypoint = ["./ghostgres", "-tls-cert", "/etc/tls/tls.crt", "-tls-key", "/etc/tls/tls.key"]
+  entrypoint = ["./ghostgres", "-acme-domain", "try.ghostgres.com", "-acme-cache-dir", "/data/acme", "-acme-tls-addr", ":8443", "-acme-email", "nathan@tigerdata.com"]
 
 [[services]]
   protocol = "tcp"
@@ -24,3 +21,15 @@ primary_region = "iad"
 
   [[services.ports]]
     port = 5432
+
+# ACME TLS-ALPN-01 challenges. Raw TCP passthrough so the server, not Fly's
+# proxy, terminates TLS.
+[[services]]
+  protocol = "tcp"
+  internal_port = 8443
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[services.ports]]
+    port = 443
