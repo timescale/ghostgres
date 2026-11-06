@@ -67,7 +67,7 @@ func authenticate(ctx context.Context, conn net.Conn, backend *pgproto3.Backend,
 		backend.Send(&pgproto3.ErrorResponse{
 			Severity: "FATAL",
 			Code:     "28000", // invalid_authorization_specification
-			Message:  "SSL is required (connect with sslmode=verify-full)",
+			Message:  "SSL is required (connect with sslmode=verify-full and sslrootcert=system)",
 		})
 		backend.Flush()
 		return "", "", "", "", nil, fmt.Errorf("client did not request SSL")
