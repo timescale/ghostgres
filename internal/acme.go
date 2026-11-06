@@ -37,15 +37,16 @@ func NewACME(domain, cacheDir, email, httpAddr string) *ACME {
 	}
 }
 
-// TLSConfig returns a TLS config that serves the managed certificate.
+// TLSConfig returns a TLS config that serves the managed certificate to every
+// client, regardless of the SNI it sends (if any). Clients that connected via a
+// different name then fail their own hostname verification with a clear error,
+// rather than getting an opaque handshake failure from the server.
 func (a *ACME) TLSConfig() *tls.Config {
 	return &tls.Config{
 		GetCertificate: func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-			// Clients connecting by IP address don't send SNI.
-			if hello.ServerName == "" {
-				hello.ServerName = a.domain
-			}
-			return a.manager.GetCertificate(hello)
+			h := *hello
+			h.ServerName = a.domain
+			return a.manager.GetCertificate(&h)
 		},
 	}
 }
