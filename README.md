@@ -62,7 +62,6 @@ The server accepts the following flags:
 | `-tls-key` | (disabled) | Path to TLS private key PEM file (requires `-tls-cert`) |
 | `-acme-domain` | (disabled) | Domain to automatically obtain a Let's Encrypt certificate for (requires `-acme-cache-dir`) |
 | `-acme-cache-dir` | `""` | Directory to persist ACME certificates and account key in |
-| `-acme-email` | `""` | Contact email for the ACME account |
 | `-acme-tls-addr` | `:443` | Address to serve ACME TLS-ALPN-01 challenges on (must be reachable on port 443 of the domain) |
 
 ## Supported providers

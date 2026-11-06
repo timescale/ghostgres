@@ -24,7 +24,7 @@ type ACME struct {
 // NewACME creates an ACME certificate manager for domain. Certificates and the
 // account key are persisted in cacheDir, which should survive restarts to avoid
 // hitting Let's Encrypt rate limits.
-func NewACME(domain, cacheDir, email, tlsAddr string) *ACME {
+func NewACME(domain, cacheDir, tlsAddr string) *ACME {
 	return &ACME{
 		domain:  domain,
 		tlsAddr: tlsAddr,
@@ -32,7 +32,6 @@ func NewACME(domain, cacheDir, email, tlsAddr string) *ACME {
 			Prompt:     autocert.AcceptTOS,
 			Cache:      autocert.DirCache(cacheDir),
 			HostPolicy: autocert.HostWhitelist(domain),
-			Email:      email,
 		},
 	}
 }

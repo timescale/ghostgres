@@ -10,7 +10,7 @@ primary_region = "iad"
   destination = "/data"
 
 [experimental]
-  entrypoint = ["./ghostgres", "-acme-domain", "try.ghostgres.com", "-acme-cache-dir", "/data/acme", "-acme-tls-addr", ":8443", "-acme-email", "nathan@tigerdata.com"]
+  entrypoint = ["./ghostgres", "-acme-domain", "try.ghostgres.com", "-acme-cache-dir", "/data/acme", "-acme-tls-addr", ":8443"]
 
 [[services]]
   protocol = "tcp"
