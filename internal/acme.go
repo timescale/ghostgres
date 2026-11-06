@@ -77,6 +77,8 @@ func (a *ACME) Serve(ctx context.Context) error {
 		ReadHeaderTimeout: 10 * time.Second,
 		ErrorLog:          errorLog,
 	}
+	// Not waited for: autocert issuance can't be cancelled, and abandoning it
+	// at shutdown is safe (nothing is cached until it succeeds).
 	go func() {
 		// The cipher suite makes autocert pick the ECDSA certificate that
 		// real clients will be served.
