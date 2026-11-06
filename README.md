@@ -63,7 +63,7 @@ The server accepts the following flags:
 | `-acme-domain` | (disabled) | Domain to automatically obtain a Let's Encrypt certificate for (requires `-acme-cache-dir`) |
 | `-acme-cache-dir` | `""` | Directory to persist ACME certificates and account key in |
 | `-acme-email` | `""` | Contact email for the ACME account |
-| `-acme-http-addr` | `:80` | Address to serve ACME HTTP-01 challenges on (must be reachable on port 80 of the domain) |
+| `-acme-tls-addr` | `:443` | Address to serve ACME TLS-ALPN-01 challenges on (must be reachable on port 443 of the domain) |
 
 ## Supported providers
 
@@ -118,7 +118,7 @@ To enable TLS, provide a certificate and private key:
 ghostgres -tls-cert /path/to/cert.pem -tls-key /path/to/key.pem
 ```
 
-Or have Ghostgres obtain and renew a certificate from Let's Encrypt automatically. Port 80 of the domain must reach `-acme-http-addr` to answer HTTP-01 challenges, and the cache directory should persist across restarts:
+Or have Ghostgres obtain and renew a certificate from Let's Encrypt automatically. Port 443 of the domain must reach `-acme-tls-addr` to answer TLS-ALPN-01 challenges, and the cache directory should persist across restarts:
 
 ```bash
 ghostgres -acme-domain db.example.com -acme-cache-dir /var/lib/ghostgres/acme

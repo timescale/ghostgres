@@ -27,7 +27,7 @@ func main() {
 	acmeDomain := flag.String("acme-domain", "", "domain to obtain a Let's Encrypt certificate for (enables TLS; requires -acme-cache-dir)")
 	acmeCacheDir := flag.String("acme-cache-dir", "", "directory to persist ACME certificates and account key in")
 	acmeEmail := flag.String("acme-email", "", "contact email for the ACME account (optional)")
-	acmeHTTPAddr := flag.String("acme-http-addr", ":80", "address to serve ACME HTTP-01 challenges on")
+	acmeTLSAddr := flag.String("acme-tls-addr", ":443", "address to serve ACME TLS-ALPN-01 challenges on")
 	flag.Parse()
 
 	// Initialize logger
@@ -62,7 +62,7 @@ func main() {
 		if *acmeCacheDir == "" {
 			logger.Fatal("-acme-cache-dir is required with -acme-domain")
 		}
-		acme := internal.NewACME(*acmeDomain, *acmeCacheDir, *acmeEmail, *acmeHTTPAddr)
+		acme := internal.NewACME(*acmeDomain, *acmeCacheDir, *acmeEmail, *acmeTLSAddr)
 		tlsConfig = acme.TLSConfig()
 		go func() {
 			if err := acme.Serve(ctx); err != nil {

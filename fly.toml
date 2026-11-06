@@ -10,7 +10,7 @@ primary_region = "iad"
   destination = "/data"
 
 [experimental]
-  entrypoint = ["./ghostgres", "-acme-domain", "try.ghostgres.com", "-acme-cache-dir", "/data/acme", "-acme-http-addr", ":8080", "-acme-email", "nathan@tigerdata.com"]
+  entrypoint = ["./ghostgres", "-acme-domain", "try.ghostgres.com", "-acme-cache-dir", "/data/acme", "-acme-tls-addr", ":8443", "-acme-email", "nathan@tigerdata.com"]
 
 [[services]]
   protocol = "tcp"
@@ -22,14 +22,14 @@ primary_region = "iad"
   [[services.ports]]
     port = 5432
 
-# ACME HTTP-01 challenges. Raw TCP passthrough so Fly's proxy doesn't intercept
-# /.well-known/acme-challenge requests.
+# ACME TLS-ALPN-01 challenges. Raw TCP passthrough so the server, not Fly's
+# proxy, terminates TLS.
 [[services]]
   protocol = "tcp"
-  internal_port = 8080
+  internal_port = 8443
   auto_stop_machines = "stop"
   auto_start_machines = true
   min_machines_running = 0
 
   [[services.ports]]
-    port = 80
+    port = 443

@@ -14,20 +14,20 @@ import (
 )
 
 // ACME obtains and renews a TLS certificate for a single domain from Let's
-// Encrypt, answering HTTP-01 challenges on its own HTTP listener.
+// Encrypt, answering TLS-ALPN-01 challenges on its own TLS listener.
 type ACME struct {
-	domain   string
-	httpAddr string
-	manager  *autocert.Manager
+	domain  string
+	tlsAddr string
+	manager *autocert.Manager
 }
 
 // NewACME creates an ACME certificate manager for domain. Certificates and the
 // account key are persisted in cacheDir, which should survive restarts to avoid
 // hitting Let's Encrypt rate limits.
-func NewACME(domain, cacheDir, email, httpAddr string) *ACME {
+func NewACME(domain, cacheDir, email, tlsAddr string) *ACME {
 	return &ACME{
-		domain:   domain,
-		httpAddr: httpAddr,
+		domain:  domain,
+		tlsAddr: tlsAddr,
 		manager: &autocert.Manager{
 			Prompt:     autocert.AcceptTOS,
 			Cache:      autocert.DirCache(cacheDir),
@@ -51,19 +51,30 @@ func (a *ACME) TLSConfig() *tls.Config {
 	}
 }
 
-// Serve answers HTTP-01 challenges until ctx is cancelled. It also obtains (or
-// renews) the certificate in the background at startup, so the first client
-// doesn't have to wait for issuance.
+// Serve answers TLS-ALPN-01 challenges until ctx is cancelled. It also obtains
+// (or renews) the certificate in the background at startup, so the first
+// client doesn't have to wait for issuance.
 func (a *ACME) Serve(ctx context.Context) error {
 	logger := LoggerFromContext(ctx)
 
-	listener, err := net.Listen("tcp", a.httpAddr)
+	listener, err := net.Listen("tcp", a.tlsAddr)
 	if err != nil {
-		return fmt.Errorf("failed to listen on %s: %w", a.httpAddr, err)
+		return fmt.Errorf("failed to listen on %s: %w", a.tlsAddr, err)
 	}
+	// Handshake errors from internet scanners are common and uninteresting.
+	errorLog, err := zap.NewStdLogAt(logger, zap.DebugLevel)
+	if err != nil {
+		return fmt.Errorf("failed to create ACME challenge server logger: %w", err)
+	}
+
+	// Challenges are answered during the TLS handshake; nothing is served
+	// over HTTP. Not calling manager.HTTPHandler keeps autocert from trying
+	// HTTP-01.
 	server := &http.Server{
-		Handler:           a.manager.HTTPHandler(http.NotFoundHandler()),
+		Handler:           http.NotFoundHandler(),
+		TLSConfig:         a.manager.TLSConfig(),
 		ReadHeaderTimeout: 10 * time.Second,
+		ErrorLog:          errorLog,
 	}
 	go func() {
 		// The cipher suite makes autocert pick the ECDSA certificate that
@@ -79,21 +90,21 @@ func (a *ACME) Serve(ctx context.Context) error {
 		logger.Info("ACME certificate ready", zap.String("domain", a.domain))
 	}()
 
-	logger.Info("ACME HTTP challenge server listening", zap.String("address", a.httpAddr))
+	logger.Info("ACME challenge server listening", zap.String("address", a.tlsAddr))
 	serveErr := make(chan error, 1)
 	go func() {
-		serveErr <- server.Serve(listener)
+		serveErr <- server.ServeTLS(listener, "", "")
 	}()
 
 	select {
 	case err := <-serveErr:
-		return fmt.Errorf("ACME HTTP challenge server failed: %w", err)
+		return fmt.Errorf("ACME challenge server failed: %w", err)
 	case <-ctx.Done():
 		if err := server.Close(); err != nil {
-			return fmt.Errorf("failed to close ACME HTTP challenge server: %w", err)
+			return fmt.Errorf("failed to close ACME challenge server: %w", err)
 		}
 		if err := <-serveErr; !errors.Is(err, http.ErrServerClosed) {
-			return fmt.Errorf("ACME HTTP challenge server failed: %w", err)
+			return fmt.Errorf("ACME challenge server failed: %w", err)
 		}
 		return nil
 	}
